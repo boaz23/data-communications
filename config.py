@@ -25,20 +25,21 @@ INT_SIZE_16 = 2
 INT_SIZE_32 = 4
 
 #**************************************************
-#************** Announcement Message **************
+#*************** Game offer Message ***************
 #**************************************************
 GAME_OFFER_PORT = 13117
 GAME_OFFER_PROTOCOL = socket.SOCK_DGRAM
 GAME_OFFER_MSG_SIZE = 7
+GAME_OFFER_RECV_BUFFER_SIZE = 1 << 4 #16
 
 MAGIC_COOKIE = 0xfeedbeef
 MAGIC_COOKIE_SIZE = INT_SIZE_32
 MSG_TYPE_OFFER = 0x2
 MSG_TYPE_OFFER_SIZE = INT_SIZE_8
-PORT_NUM_SIZE = INT_SIZE_16
 
 #**************************************************
-#********************* Server *********************
+#*********** General Data communication ***********
 #**************************************************
-PORT_INT_SIZE = INT_SIZE_16
+PORT_NUM_SIZE = INT_SIZE_16
 SERVER_GAME_PORT = 12000
+SERVER_RECV_BUFFER_SIZE = 1 << 11 #2048

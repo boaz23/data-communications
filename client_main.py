@@ -6,18 +6,19 @@ import coder
 
 def main():
     while True:
-        server = look_for_game()
-        while server is None:
-            server = look_for_game()
-        server_addr = server[0]
-        port = server[1]
-        print(f"offer from {server_addr}:{port}")
+        game_offer = look_for_game()
+        while game_offer is None:
+            game_offer = look_for_game()
+        server_addr = game_offer[0]
+        port = game_offer[1]
+        #print(f"offer from {server_addr}:{port}")
 
 
 def look_for_game():
+    #print(f"looking for game, listening on {network.my_addr()}:{config.GAME_OFFER_PORT}")
     game_offer_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     game_offer_socket.bind((network.my_addr(), config.GAME_OFFER_PORT))
-    message_bytes, server_addr = game_offer_socket.recvfrom(config.MSG_TYPE_OFFER_SIZE + 1)
+    message_bytes, server = game_offer_socket.recvfrom(config.GAME_OFFER_RECV_BUFFER_SIZE)
     if len(message_bytes) != config.GAME_OFFER_MSG_SIZE:
         return None
     magic_coockie = coder.decode_int(message_bytes[0:4])
@@ -27,7 +28,7 @@ def look_for_game():
     if msg_type != config.MSG_TYPE_OFFER:
         return None
     port = coder.decode_int(message_bytes[5:7])
-    return (server_addr, port)
+    return (server[0], port)
 
 if __name__ == "__main__":
     main()
