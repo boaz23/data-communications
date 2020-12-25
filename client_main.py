@@ -6,9 +6,10 @@ import coder
 import util
 
 def main():
+    print("Client started, listening for offer requests...")
     while True:
         game_offer = look_for_game()
-        establish_game_connection(game_offer)
+        game_socket = establish_game_connection(game_offer)
 
 def look_for_game():
     print(f"waiting for game offer, listening on {network.my_addr()}:{config.GAME_OFFER_PORT}")
@@ -73,7 +74,9 @@ def recv_game_offer(game_offer_socket):
 def establish_game_connection(game_offer):
     server_addr = game_offer[0]
     port = game_offer[1]
+    print(f"Received offer from {server_addr}, attempting to connect...")
     print(f"got offer from {server_addr}:{port}")
+
 
 if __name__ == "__main__":
     main()

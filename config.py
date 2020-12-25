@@ -25,7 +25,7 @@ INT_SIZE_16 = 2
 INT_SIZE_32 = 4
 
 #**************************************************
-#*************** Game offer Message ***************
+#******************* Game Offers *******************
 #**************************************************
 GAME_OFFER_PORT = 13117
 GAME_OFFER_PROTOCOL = socket.SOCK_DGRAM
@@ -37,8 +37,11 @@ MAGIC_COOKIE_SIZE = INT_SIZE_32
 MSG_TYPE_OFFER = 0x2
 MSG_TYPE_OFFER_SIZE = INT_SIZE_8
 
+SERVER_OFFER_SENDING_DURATION = 10
+GAME_OFFER_WAIT_TIME = 0.5
+
 #**************************************************
-#*********** General Data communication ***********
+#****************** General Stuff *****************
 #**************************************************
 PORT_NUM_SIZE = INT_SIZE_16
 SERVER_GAME_PORT = 12000
