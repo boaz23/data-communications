@@ -15,6 +15,7 @@ def main():
         game_offer_addr = look_for_game()
         game_socket = establish_game_connection(game_offer_addr)
         send_team_name(game_socket)
+        #game_socket.close()
 
 
 def look_for_game():

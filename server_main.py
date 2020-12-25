@@ -21,8 +21,6 @@ start_game_event = None
 def main():
     global game_server_socket
     global selector
-    global client_invitation_thread
-    global start_game_event
 
     signal.signal(signal.SIGINT, signal.default_int_handler)
     try:
@@ -39,8 +37,6 @@ def main():
 def main_loop():
     global game_server_socket
     global selector
-    global client_invitation_thread
-    global start_game_event
 
     while True:
         selector = selectors.DefaultSelector()
@@ -48,7 +44,9 @@ def main_loop():
         selector.register(game_server_socket, selectors.EVENT_READ)
         game_server_socket.listen()
 
+        print('starting a new game')
         new_game()
+        print('game ended')
 
         selector.unregister(game_server_socket)
         game_server_socket.close()
@@ -57,6 +55,7 @@ def main_loop():
         selector = None
 
 def init_game_server_socket():
+    global game_server_socket_addr
     game_server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     game_server_socket.bind(game_server_socket_addr.to_tuple())
     game_server_socket.setblocking(False)
@@ -64,14 +63,16 @@ def init_game_server_socket():
     return game_server_socket
 
 def new_game():
-    client_invitation_thread, start_game_event = invite_clients()
+    invite_clients()
     handle_game_accepts()
 
 def invite_clients():
+    global client_invitation_thread
+    global start_game_event
+
     start_game_event = threading.Event()
-    thread = threading.Thread(name='invite clients', target=invite_clients_target, args=(start_game_event))
-    thread.start()
-    return thread, start_game_event
+    client_invitation_thread = threading.Thread(name='invite clients', target=invite_clients_target)
+    client_invitation_thread.start()
 
 def handle_game_accepts():
     global game_server_socket
@@ -85,13 +86,14 @@ def handle_game_accepts():
             elif events & selectors.EVENT_READ != 0:
                 accept_client_read(selection_key)
 
-def invite_clients_target(start_game_event):
+def invite_clients_target():
     global invite_socket
+    global start_game_event
 
     invite_socket = socket.socket(socket.AF_INET, config.GAME_OFFER_PROTOCOL)
     invite_socket.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
     e = threading.Event()
-    thread = threading.Thread(name='send game offers loop', target=send_game_offers_loop, args=(e))
+    thread = threading.Thread(name='send game offers loop', target=send_game_offers_loop, args=(e,))
     thread.start()
     thread.join(config.SERVER_OFFER_SENDING_DURATION)
     e.set()
@@ -110,6 +112,7 @@ def send_game_offers_loop(e):
 def send_game_offer():
     global invite_socket
     global game_server_socket_addr
+    global game_offer_send_addr
 
     print(f"sending game offers")
     message_bytes = bytearray()
@@ -129,25 +132,22 @@ def accept_client(selection_key):
 def accept_client_read(selection_key):
     #TODO: add to group and set team name
     client = selection_key.data
-    if client.team_name is None and client.is_invalid == False:
+    if client.team_name is None:
         message_bytes = client.socket.recv(config.SERVER_RECV_BUFFER_SIZE)
         client.team_name = read_team_name(message_bytes)
-        client.is_invalid = client.team_name is None
         # discard any bytes after the newline
+
+        if client.team_name is not None:
+            print(f"team '{client.team_name}' connected")
     else:
         # already got data from this client
         pass
 
 def read_team_name(message_bytes):
-    name_bytes = bytearray()
-    for byte in message_bytes:
-        c = chr(byte)
-        if c.isalpha():
-            name_bytes += byte
-        elif c == '\n':
-            return coder.decode_string(name_bytes)
-        else:
-            return None
+    message_string = coder.decode_string(message_bytes)
+    if message_string[-1] != '\n':
+        return None
+    return message_string[:-1]
 
 if __name__ == "__main__":
     main()
