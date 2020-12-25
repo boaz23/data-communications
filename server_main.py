@@ -144,6 +144,8 @@ def accept_client_read(selection_key):
         pass
 
 def read_team_name(message_bytes):
+    if len(message_bytes) == 0:
+        return None
     message_string = coder.decode_string(message_bytes)
     if message_string[-1] != '\n':
         return None
