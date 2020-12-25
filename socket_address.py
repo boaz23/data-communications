@@ -10,7 +10,7 @@ class SocketAddress:
         return hash(self.to_tuple())
 
     def __str__(self):
-        return f"{host}:{port}"
+        return f"{self.host}:{self.port}"
 
     def to_tuple(self):
-        return (host, port)
+        return (self.host, self.port)

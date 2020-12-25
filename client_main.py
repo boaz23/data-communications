@@ -1,4 +1,5 @@
 import socket
+import time
 
 import config
 import network
@@ -13,6 +14,8 @@ def main():
     while True:
         game_offer_addr = look_for_game()
         game_socket = establish_game_connection(game_offer_addr)
+        send_team_name(game_socket)
+
 
 def look_for_game():
     print(f"waiting for game offer, listening on {game_offer_recv_addr}")
@@ -27,6 +30,17 @@ def look_for_game():
             game_offer_socket.close()
         game_offer_socket = None
     return game_offer
+
+def establish_game_connection(game_offer_addr):
+    print(f"Received offer from {game_offer_addr.host}, attempting to connect...")
+    print(f"got offer from {game_offer_addr}")
+    game_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    game_socket.setblocking(False)
+    game_socket.connect(game_offer_addr.to_tuple())
+    return game_socket
+
+def send_team_name(game_socket):
+    game_socket.send(coder.encode_string(f"{config.TEAM_NAME}\n"))
 
 def init_game_offer_socket():
     game_offer_socket = create_game_offer_socket()
@@ -75,11 +89,6 @@ def recv_game_offer(game_offer_socket):
     except OSError as e:
         util.print_err(f"error while receiving data from game offer socket: {e}")
         return None
-
-def establish_game_connection(game_offer_addr):
-    print(f"Received offer from {game_offer_addr.host}, attempting to connect...")
-    print(f"got offer from {game_offer_addr}")
-
 
 if __name__ == "__main__":
     main()
