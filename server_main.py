@@ -7,6 +7,8 @@ import config
 import network
 import coder
 import util
+from socket_address import SocketAddress
+from game_client import GameClient
 
 invite_socket = None
 game_server_socket = None
@@ -25,15 +27,7 @@ def main():
     signal.signal(signal.SIGINT, signal.default_int_handler)
     try:
         print(f"Server started, listening on IP address {network.my_addr()}")
-        selector = selectors.DefaultSelector()
-        game_server_socket, game_port = init_game_server_socket()
-        selector.register(game_server_socket, selectors.EVENT_READ)
-
-        while True:
-            game_server_socket.listen()
-            client_invitation_thread, start_game_event = invite_clients()
-            handle_game_accepts()
-
+        main_loop()
     except KeyboardInterrupt:
         pass
     finally:
@@ -42,10 +36,36 @@ def main():
         if selector is not None:
             selector.close()
 
+def main_loop():
+    global game_server_socket
+    global game_port
+    global selector
+    global client_invitation_thread
+    global start_game_event
+
+    while True:
+        selector = selectors.DefaultSelector()
+        game_server_socket, game_port = init_game_server_socket()
+        selector.register(game_server_socket, selectors.EVENT_READ)
+        game_server_socket.listen()
+
+        new_game()
+
+        selector.unregister(game_server_socket)
+        game_server_socket.close()
+        selector.close()
+        game_server_socket = None
+        selector = None
+
+def new_game():
+    client_invitation_thread, start_game_event = invite_clients()
+    handle_game_accepts()
+
 def init_game_server_socket():
     game_server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     game_server_socket.bind((network.my_addr(), config.SERVER_GAME_PORT))
     game_server_socket.setblocking(False)
+    #game_server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     game_port = game_server_socket.getsockname()[1]
     return game_server_socket, game_port
 
@@ -56,8 +76,49 @@ def invite_clients():
     return thread, start_game_event
 
 def handle_game_accepts():
+    global game_server_socket
     global selector
-    pass
+    global start_game_event
+
+    while not start_game_event.is_set():
+        for (selection_key, events) in selector.select():
+            if selection_key.fileobj is game_server_socket:
+                accept_client(selection_key)
+            elif events & selectors.EVENT_READ != 0:
+                accept_client_read(selection_key)
+
+
+def accept_client(selection_key):
+    global game_server_socket
+    global selector
+    client = GameClient(game_server_socket.accept())
+    client.socket.setblocking(False)
+    selector.register(client.socket, selectors.EVENT_READ, client)
+
+
+def accept_client_read(selection_key):
+    #TODO: add to group and set team name
+    client = selection_key.data
+    if client.team_name is None and client.is_invalid == False:
+        message_bytes = client.socket.recv(config.SERVER_RECV_BUFFER_SIZE)
+        client.team_name = read_team_name(message_bytes)
+        client.is_invalid = client.team_name is None
+        # discard any bytes after the newline
+    else:
+        # already got data from this client
+        pass
+
+def read_team_name(message_bytes):
+    name_bytes = bytearray()
+    for byte in message_bytes:
+        c = chr(byte)
+        if c.isalpha():
+            name_bytes += byte
+        elif c == '\n':
+            return coder.decode_string(name_bytes)
+        else:
+            return None
+
 
 def invite_clients_target(start_game_event):
     global invite_socket
@@ -76,7 +137,7 @@ def invite_clients_target(start_game_event):
 
 def send_game_offers_loop(e):
     print(f"broadcasting game offer to {network.broadcast_addr()}:{config.GAME_OFFER_PORT}")
-    while not e.isSet():
+    while not e.is_set():
         send_game_offer()
         e.wait(config.GAME_OFFER_WAIT_TIME)
 
