@@ -10,9 +10,10 @@ import util
 from socket_address import SocketAddress
 from game_client import GameClient
 
+game_port = -1
+game_offer_send_addr = None
 invite_socket = None
 game_server_socket = None
-game_port = -1
 selector = None
 client_invitation_thread = None
 start_game_event = None
@@ -26,6 +27,7 @@ def main():
 
     signal.signal(signal.SIGINT, signal.default_int_handler)
     try:
+        game_offer_send_addr = SocketAddress((network.broadcast_addr(), config.GAME_OFFER_PORT))
         print(f"Server started, listening on IP address {network.my_addr()}")
         main_loop()
     except KeyboardInterrupt:
@@ -57,10 +59,6 @@ def main_loop():
         game_server_socket = None
         selector = None
 
-def new_game():
-    client_invitation_thread, start_game_event = invite_clients()
-    handle_game_accepts()
-
 def init_game_server_socket():
     game_server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     game_server_socket.bind((network.my_addr(), config.SERVER_GAME_PORT))
@@ -68,6 +66,10 @@ def init_game_server_socket():
     #game_server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     game_port = game_server_socket.getsockname()[1]
     return game_server_socket, game_port
+
+def new_game():
+    client_invitation_thread, start_game_event = invite_clients()
+    handle_game_accepts()
 
 def invite_clients():
     start_game_event = threading.Event()
@@ -87,6 +89,37 @@ def handle_game_accepts():
             elif events & selectors.EVENT_READ != 0:
                 accept_client_read(selection_key)
 
+def invite_clients_target(start_game_event):
+    global invite_socket
+
+    invite_socket = socket.socket(socket.AF_INET, config.GAME_OFFER_PROTOCOL)
+    invite_socket.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+    e = threading.Event()
+    thread = threading.Thread(name='send game offers loop', target=send_game_offers_loop, args=(e))
+    thread.start()
+    thread.join(config.SERVER_OFFER_SENDING_DURATION)
+    e.set()
+    thread.join()
+    invite_socket.close()
+    invite_socket = None
+    start_game_event.set()
+
+def send_game_offers_loop(e):
+    global game_offer_send_addr
+    print(f"broadcasting game offer to {game_offer_send_addr}")
+    while not e.is_set():
+        send_game_offer()
+        e.wait(config.GAME_OFFER_WAIT_TIME)
+
+def send_game_offer():
+    global invite_socket
+
+    print(f"sending game offers")
+    message_bytes = bytearray()
+    message_bytes += coder.encode_int(config.MAGIC_COOKIE, config.MAGIC_COOKIE_SIZE)
+    message_bytes += coder.encode_int(config.MSG_TYPE_OFFER, config.MSG_TYPE_OFFER_SIZE)
+    message_bytes += coder.encode_int(game_port, config.PORT_NUM_SIZE)
+    invite_socket.sendto(message_bytes, game_offer_send_addr.to_tuple())
 
 def accept_client(selection_key):
     global game_server_socket
@@ -118,38 +151,6 @@ def read_team_name(message_bytes):
             return coder.decode_string(name_bytes)
         else:
             return None
-
-
-def invite_clients_target(start_game_event):
-    global invite_socket
-
-    invite_socket = socket.socket(socket.AF_INET, config.GAME_OFFER_PROTOCOL)
-    invite_socket.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
-    e = threading.Event()
-    thread = threading.Thread(name='send game offers loop', target=send_game_offers_loop, args=(e))
-    thread.start()
-    thread.join(config.SERVER_OFFER_SENDING_DURATION)
-    e.set()
-    thread.join()
-    invite_socket.close()
-    invite_socket = None
-    start_game_event.set()
-
-def send_game_offers_loop(e):
-    print(f"broadcasting game offer to {network.broadcast_addr()}:{config.GAME_OFFER_PORT}")
-    while not e.is_set():
-        send_game_offer()
-        e.wait(config.GAME_OFFER_WAIT_TIME)
-
-def send_game_offer():
-    global invite_socket
-
-    print(f"sending game offers")
-    message_bytes = bytearray()
-    message_bytes += coder.encode_int(config.MAGIC_COOKIE, config.MAGIC_COOKIE_SIZE)
-    message_bytes += coder.encode_int(config.MSG_TYPE_OFFER, config.MSG_TYPE_OFFER_SIZE)
-    message_bytes += coder.encode_int(game_port, config.PORT_NUM_SIZE)
-    invite_socket.sendto(message_bytes, (network.broadcast_addr(), config.GAME_OFFER_PORT))
 
 if __name__ == "__main__":
     main()

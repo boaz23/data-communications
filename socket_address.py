@@ -7,7 +7,10 @@ class SocketAddress:
         return other and self.host == other.host and self.port == other.port
 
     def __hash__(self):
-        return hash((host, port))
+        return hash(self.to_tuple())
 
     def __str__(self):
         return f"{host}:{port}"
+
+    def to_tuple(self):
+        return (host, port)
