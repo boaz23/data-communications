@@ -10,8 +10,8 @@ import util
 from socket_address import SocketAddress
 from game_client import GameClient
 
-game_port = -1
-game_offer_send_addr = None
+game_server_socket_addr = SocketAddress((network.my_addr(), config.SERVER_GAME_PORT))
+game_offer_send_addr = SocketAddress((network.broadcast_addr(), config.GAME_OFFER_PORT))
 invite_socket = None
 game_server_socket = None
 selector = None
@@ -20,14 +20,12 @@ start_game_event = None
 
 def main():
     global game_server_socket
-    global game_port
     global selector
     global client_invitation_thread
     global start_game_event
 
     signal.signal(signal.SIGINT, signal.default_int_handler)
     try:
-        game_offer_send_addr = SocketAddress((network.broadcast_addr(), config.GAME_OFFER_PORT))
         print(f"Server started, listening on IP address {network.my_addr()}")
         main_loop()
     except KeyboardInterrupt:
@@ -40,14 +38,13 @@ def main():
 
 def main_loop():
     global game_server_socket
-    global game_port
     global selector
     global client_invitation_thread
     global start_game_event
 
     while True:
         selector = selectors.DefaultSelector()
-        game_server_socket, game_port = init_game_server_socket()
+        game_server_socket = init_game_server_socket()
         selector.register(game_server_socket, selectors.EVENT_READ)
         game_server_socket.listen()
 
@@ -61,11 +58,10 @@ def main_loop():
 
 def init_game_server_socket():
     game_server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    game_server_socket.bind((network.my_addr(), config.SERVER_GAME_PORT))
+    game_server_socket.bind(game_server_socket_addr.to_tuple())
     game_server_socket.setblocking(False)
     #game_server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    game_port = game_server_socket.getsockname()[1]
-    return game_server_socket, game_port
+    return game_server_socket
 
 def new_game():
     client_invitation_thread, start_game_event = invite_clients()
@@ -113,12 +109,13 @@ def send_game_offers_loop(e):
 
 def send_game_offer():
     global invite_socket
+    global game_server_socket_addr
 
     print(f"sending game offers")
     message_bytes = bytearray()
     message_bytes += coder.encode_int(config.MAGIC_COOKIE, config.MAGIC_COOKIE_SIZE)
     message_bytes += coder.encode_int(config.MSG_TYPE_OFFER, config.MSG_TYPE_OFFER_SIZE)
-    message_bytes += coder.encode_int(game_port, config.PORT_NUM_SIZE)
+    message_bytes += coder.encode_int(game_server_socket_addr.port, config.PORT_NUM_SIZE)
     invite_socket.sendto(message_bytes, game_offer_send_addr.to_tuple())
 
 def accept_client(selection_key):
