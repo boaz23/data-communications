@@ -1,6 +1,4 @@
-from scapy.all import *
-
-ADDR_LOCALHOST = ''
+import scapy.all
 
 class NetIf:
     def __init__(self, name, broadcast_address):
@@ -8,7 +6,7 @@ class NetIf:
         self.broadcast_address = broadcast_address
 
     def addr(self):
-        return get_if_addr(self.name)
+        return scapy.all.get_if_addr(self.name)
 
 #--------------------
 import config
