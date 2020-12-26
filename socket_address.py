@@ -1,4 +1,9 @@
 class SocketAddress:
+    """Reprsents a TCP address
+
+    Reprsents an address used for TCP connections:
+    IP address of the host and port number
+    """
     def __init__(self, addr):
         self.host = addr[0]
         self.port = addr[1]

@@ -1,3 +1,9 @@
+"""Data struct for game clients in the server
+
+A class to store client related data in the server
+(e.g. team name, the connection socket, etc.)
+"""
+
 from socket_address import SocketAddress
 
 class GameClient:

@@ -1,3 +1,6 @@
+"""Encoding and decoding of data
+"""
+
 import config
 
 def encode_int(n, size):
