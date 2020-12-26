@@ -2,6 +2,7 @@ import socket
 import threading
 import selectors
 import signal
+import re
 
 import config
 import network
@@ -147,9 +148,10 @@ def read_team_name(message_bytes):
     if len(message_bytes) == 0:
         return None
     message_string = coder.decode_string(message_bytes)
-    if message_string[-1] != '\n':
+    regex_match = re.match(r'^(\w+)\n$', message_string)
+    if not regex_match:
         return None
-    return message_string[:-1]
+    return regex_match.group(1)
 
 if __name__ == "__main__":
     main()
