@@ -40,20 +40,26 @@ def main_loop():
     global selector
 
     while True:
-        selector = selectors.DefaultSelector()
-        game_server_socket = init_game_server_socket()
-        selector.register(game_server_socket, selectors.EVENT_READ)
-        game_server_socket.listen()
+        try:
+            has_socket_been_registered = False
+            selector = selectors.DefaultSelector()
+            game_server_socket = init_game_server_socket()
+            selector.register(game_server_socket, selectors.EVENT_READ)
+            has_socket_been_registered = True
+            game_server_socket.listen()
 
-        print('starting a new game')
-        new_game()
-        print('game ended')
-
-        selector.unregister(game_server_socket)
-        game_server_socket.close()
-        selector.close()
-        game_server_socket = None
-        selector = None
+            print('starting a new game')
+            new_game()
+            print('game ended')
+        finally:
+            if has_socket_been_registered:
+                selector.unregister(game_server_socket)
+            if game_server_socket is not None:
+                game_server_socket.close()
+                game_server_socket = None
+            if selector is not None:
+                selector.close()
+                selector = None
 
 def init_game_server_socket():
     global game_server_socket_addr
