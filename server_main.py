@@ -55,6 +55,7 @@ def main_loop():
             if has_socket_been_registered:
                 selector.unregister(game_server_socket)
             if game_server_socket is not None:
+                game_server_socket.shutdown(socket.SHUT_RDWR)
                 game_server_socket.close()
                 game_server_socket = None
             if selector is not None:
@@ -66,7 +67,7 @@ def init_game_server_socket():
     game_server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     game_server_socket.bind(game_server_socket_addr.to_tuple())
     game_server_socket.setblocking(False)
-    #game_server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    game_server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     return game_server_socket
 
 def new_game():
