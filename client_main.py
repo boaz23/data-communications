@@ -15,6 +15,7 @@ game_socket = None
 selector = None
 
 def main():
+    #see the code from https://docs.python.org/2/faq/library.html#how-do-i-get-a-single-keypress-at-a-time
     global fd_stdin
 
     oldterm = termios.tcgetattr(fd_stdin)
