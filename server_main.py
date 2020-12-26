@@ -141,7 +141,7 @@ def accept_client_read(selection_key):
     #TODO: add to group and set team name
     client = selection_key.data
     if client.team_name is None:
-        message_bytes = client.socket.recv(config.SERVER_RECV_BUFFER_SIZE)
+        message_bytes = client.socket.recv(config.DEFAULT_RECV_BUFFER_SIZE)
         client.team_name = read_team_name(message_bytes)
         # discard any bytes after the newline
 

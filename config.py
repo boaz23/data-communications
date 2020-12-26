@@ -50,9 +50,11 @@ MAGIC_COOKIE_SIZE = INT_SIZE_32
 MSG_TYPE_OFFER = 0x2
 MSG_TYPE_OFFER_SIZE = INT_SIZE_8
 
-# The duration for which the server keeps sending (broadcasting) game offers to clients
+# The duration for which the server keeps sending (broadcasting) game
+# offers to clients
 SERVER_OFFER_SENDING_DURATION = 10
-# The amount of time the server waits between sending two consecutive game offers packets
+# The amount of time the server waits between sending two consecutive
+# game offers packets
 GAME_OFFER_WAIT_TIME = 0.5
 
 #**************************************************
@@ -63,7 +65,6 @@ GAME_OFFER_WAIT_TIME = 0.5
 PORT_NUM_SIZE = INT_SIZE_16
 # The port which the server will accept game connections
 SERVER_GAME_PORT = 54432
-# The size of the buffer of the server when reading clients data from
-# the socket connection with the client
-SERVER_RECV_BUFFER_SIZE = 1 << 11 #2048
+# The default size for buffers when reading data from socket connections
+DEFAULT_RECV_BUFFER_SIZE = 1 << 11 #2048
 RETRY_TIME = 0.1
