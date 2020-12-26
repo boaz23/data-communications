@@ -9,13 +9,13 @@ def main():
         server_socket.listen()
         client_socket, client_addr = server_socket.accept()
         print(f"accepted connection from {client_addr[0]}:{client_addr[1]}")
-        print("")
+        print("--------------------\n")
         while True:
             print(client_socket.recv(2048).decode())
     except KeyboardInterrupt:
         pass
     finally:
-        print("")
+        print("\n--------------------")
         print("dummy server shutting down...")
         if server_socket is not None:
             server_socket.shutdown(socket.SHUT_RDWR)
