@@ -11,9 +11,7 @@ from socket_address import SocketAddress
 
 from client_game_looker import look_for_game
 
-game_offer_recv_addr = SocketAddress((network.my_addr(), config.GAME_OFFER_PORT))
 fd_stdin = sys.stdin.fileno()
-game_socket = None
 selector = None
 
 def main():
@@ -64,18 +62,6 @@ def main_logic_iter():
             selector.unregister(game_socket)
         if game_socket is not None:
             game_socket.close()
-
-def establish_game_connection(game_offer_addr):
-    global game_socket
-    global selector
-
-    print(f"Received offer from {game_offer_addr.host}, attempting to connect...")
-    print(f"got offer from {game_offer_addr}")
-    game_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    game_socket.connect(game_offer_addr.to_tuple())
-
-def send_team_name():
-    game_socket.send(coder.encode_string(f"{config.TEAM_NAME}\n"))
 
 if __name__ == "__main__":
     main()
