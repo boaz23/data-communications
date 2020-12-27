@@ -67,4 +67,3 @@ PORT_NUM_SIZE = INT_SIZE_16
 SERVER_GAME_PORT = 0
 # The default size for buffers when reading data from socket connections
 DEFAULT_RECV_BUFFER_SIZE = 1 << 11 #2048
-RETRY_TIME = 0.1
