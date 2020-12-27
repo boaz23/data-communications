@@ -66,6 +66,8 @@ def init_game_server_socket():
     global game_server_socket_addr
     game_server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     game_server_socket.bind(game_server_socket_addr.to_tuple())
+    game_server_socket_addr = SocketAddress(game_server_socket.getsockname())
+    print(game_server_socket_addr)
     game_server_socket.setblocking(False)
     game_server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     return game_server_socket

@@ -64,7 +64,7 @@ GAME_OFFER_WAIT_TIME = 0.5
 # The size of port number fields in various structs
 PORT_NUM_SIZE = INT_SIZE_16
 # The port which the server will accept game connections
-SERVER_GAME_PORT = 54432
+SERVER_GAME_PORT = 0
 # The default size for buffers when reading data from socket connections
 DEFAULT_RECV_BUFFER_SIZE = 1 << 11 #2048
 RETRY_TIME = 0.1
