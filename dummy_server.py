@@ -85,4 +85,4 @@ if __name__ == "__main__":
     args_parser.add_argument("-p, --port", default=12000, required=False, type=int, dest="port")
     args_parser.add_argument("-c", required=False, action='store_const', const=True, default=False, dest="c")
     args = args_parser.parse_args()
-    main(SocketAddress((args.host, args.port)), args.c)
+    main(SocketAddress(args.host, args.port), args.c)

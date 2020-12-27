@@ -17,7 +17,7 @@ import util
 from socket_address import SocketAddress
 
 # This is the address which we will listen for packets
-_game_offer_recv_addr = SocketAddress((network.my_addr(), config.GAME_OFFER_PORT))
+_game_offer_recv_addr = SocketAddress(network.my_addr(), config.GAME_OFFER_PORT)
 
 def look_for_game():
     """Looks for a game offer and returns the server with the port
@@ -69,7 +69,7 @@ def _recv_game_offer(game_offer_socket):
         util.print_err("invalid game offer: message type")
         return None
     port = coder.decode_int(message_bytes[5:7])
-    return SocketAddress((server_addr.host, port))
+    return SocketAddress(server_addr.host, port)
 
 if __name__ == "__main__":
     try:

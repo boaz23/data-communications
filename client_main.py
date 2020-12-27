@@ -7,7 +7,6 @@ import config
 import network
 import coder
 import util
-from socket_address import SocketAddress
 
 from client_game_looker import look_for_game
 from client_game_connection import prepare_for_game

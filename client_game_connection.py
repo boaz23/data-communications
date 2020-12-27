@@ -42,7 +42,7 @@ if __name__ == "__main__":
     args_parser.add_argument("-p, --port", default=12000, required=False, type=int, dest="port")
     args = args_parser.parse_args()
     try:
-        game_socket, msg = prepare_for_game(SocketAddress((args.host, args.port)), do_nothing)
+        game_socket, msg = prepare_for_game(SocketAddress(args.host, args.port), do_nothing)
         print(msg)
     except KeyboardInterrupt:
         pass

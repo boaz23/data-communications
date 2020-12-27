@@ -11,8 +11,8 @@ import util
 from socket_address import SocketAddress
 from game_client import GameClient
 
-game_server_socket_addr = SocketAddress((network.my_addr(), config.SERVER_GAME_PORT))
-game_offer_send_addr = SocketAddress((network.broadcast_addr(), config.GAME_OFFER_PORT))
+game_server_socket_addr = SocketAddress(network.my_addr(), config.SERVER_GAME_PORT)
+game_offer_send_addr = SocketAddress(network.broadcast_addr(), config.GAME_OFFER_PORT)
 invite_socket = None
 game_server_socket = None
 selector = None
