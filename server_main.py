@@ -20,6 +20,7 @@ selector = None
 client_invitation_thread = None
 start_game_event = None
 groups = []
+next_group_index = 0
 
 def main():
     global game_server_socket
@@ -75,10 +76,17 @@ def init_game_server_socket():
     return game_server_socket
 
 def new_game():
-    global groups
-    groups = [Group(0), Group(1)]
+    init_groups()
     invite_clients()
     handle_game_accepts()
+
+def init_groups():
+    global groups
+    global next_group_index
+    next_group_index = 0
+    groups = []
+    for i in range(config.MAX_GROUPS_COUNT):
+        groups.append(Group(i))
 
 def invite_clients():
     global client_invitation_thread
@@ -142,32 +150,54 @@ def accept_client(selection_key):
     client.socket.setblocking(False)
     selector.register(client.socket, selectors.EVENT_READ, client)
 
-
 def game_intermission_client_read(selection_key):
     global selector
     #TODO: add to group and set team name
+    #TODO: figure out whether if the first client is not in the correct
+    # format, should we keep looking for his team name or just ignore
+    # the client completely
     client = selection_key.data
-    message_bytes, should_remove_client = game_intermissions_read_client_bytes(client)
+    team_name, should_remove_client = game_intermissions_admit_to_game_lobby(client)
     if should_remove_client:
         selector.unregister(client.socket)
         client.socket.close()
-    else:
-        client.team_name = read_team_name_from_bytes(message_bytes)
-        if client.team_name is not None:
-            print(f"team '{client.team_name}' connected")
 
-def game_intermissions_read_client_bytes(client):
+def game_intermissions_admit_to_game_lobby(client):
     if client.team_name is None:
-        message_bytes = client.socket.recv(config.DEFAULT_RECV_BUFFER_SIZE)
-        if len(message_bytes) == 0:
-            return None, True
+        team_name, should_remove_client = game_intermission_read_team_name_core(client)
+        if should_remove_client:
+            return True
+        else:
+            client.team_name = team_name
+            if client.team_name is not None:
+                print(f"team '{client.team_name}' connected")
+                assign_client_to_group(client)
     else:
-        message_bytes = None
+        ignore_client_data(client.socket)
 
     # read everything left from the client so that it won't be read
     # when the game starts, it should be carried over.
     # also, check to see if the client closed the connection
-    return message_bytes, ignore_client_data(client.socket)
+    return False
+
+def assign_client_to_group(client):
+    global next_group_index
+    global groups
+
+    client.group = groups[next_group_index]
+    next_group_index = (next_group_index + 1) % len(groups)
+
+def game_intermission_read_team_name_core(client):
+    team_name = None
+    while team_name is None:
+        try:
+            message_bytes = client.socket.recv(config.DEFAULT_RECV_BUFFER_SIZE)
+            if len(message_bytes) == 0:
+                return None, True
+            team_name = read_team_name_from_bytes(message_bytes)
+        except BlockingIOError:
+            return None, False
+    return team_name, False
 
 def read_team_name_from_bytes(message_bytes):
     message_string = coder.decode_string(message_bytes)
