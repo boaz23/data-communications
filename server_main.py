@@ -10,6 +10,7 @@ import coder
 import util
 from socket_address import SocketAddress
 from game_client import GameClient
+from group import Group
 
 game_server_socket_addr = SocketAddress(network.my_addr(), config.SERVER_GAME_PORT)
 game_offer_send_addr = SocketAddress(network.broadcast_addr(), config.GAME_OFFER_PORT)
@@ -18,6 +19,7 @@ game_server_socket = None
 selector = None
 client_invitation_thread = None
 start_game_event = None
+groups = []
 
 def main():
     global game_server_socket
@@ -73,6 +75,8 @@ def init_game_server_socket():
     return game_server_socket
 
 def new_game():
+    global groups
+    groups = [Group(0), Group(1)]
     invite_clients()
     handle_game_accepts()
 
@@ -94,7 +98,7 @@ def handle_game_accepts():
             if selection_key.fileobj is game_server_socket:
                 accept_client(selection_key)
             elif (events & selectors.EVENT_READ) != 0:
-                accept_client_read(selection_key)
+                game_intermission_client_read(selection_key)
 
 def invite_clients_target():
     global invite_socket
@@ -139,28 +143,53 @@ def accept_client(selection_key):
     selector.register(client.socket, selectors.EVENT_READ, client)
 
 
-def accept_client_read(selection_key):
+def game_intermission_client_read(selection_key):
+    global selector
     #TODO: add to group and set team name
     client = selection_key.data
-    if client.team_name is None:
-        message_bytes = client.socket.recv(config.DEFAULT_RECV_BUFFER_SIZE)
-        client.team_name = read_team_name(message_bytes)
-        # discard any bytes after the newline
-
+    message_bytes, should_remove_client = game_intermissions_read_client_bytes(client)
+    if should_remove_client:
+        selector.unregister(client.socket)
+        client.socket.close()
+    else:
+        client.team_name = read_team_name_from_bytes(message_bytes)
         if client.team_name is not None:
             print(f"team '{client.team_name}' connected")
-    else:
-        # already got data from this client
-        pass
 
-def read_team_name(message_bytes):
-    if len(message_bytes) == 0:
-        return None
+def game_intermissions_read_client_bytes(client):
+    if client.team_name is None:
+        message_bytes = client.socket.recv(config.DEFAULT_RECV_BUFFER_SIZE)
+        if len(message_bytes) == 0:
+            return None, True
+    else:
+        message_bytes = None
+
+    # read everything left from the client so that it won't be read
+    # when the game starts, it should be carried over.
+    # also, check to see if the client closed the connection
+    return message_bytes, ignore_client_data(client.socket)
+
+def read_team_name_from_bytes(message_bytes):
     message_string = coder.decode_string(message_bytes)
     regex_match = re.match(r'^(\w+)\n$', message_string)
     if not regex_match:
         return None
     return regex_match.group(1)
+
+def ignore_client_data(client_socket):
+    try:
+        while True:
+            message_bytes = client_socket.recv(config.DEFAULT_RECV_BUFFER_SIZE)
+            if len(message_bytes) == 0:
+                # peer closed the connection
+                return True
+            if len(message_bytes) < config.DEFAULT_RECV_BUFFER_SIZE:
+                # we read everything, nothing is left to read
+                break
+    except BlockingIOError:
+        # we tried to read data even though there was none
+        pass
+    return False
 
 if __name__ == "__main__":
     main()
