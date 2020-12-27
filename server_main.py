@@ -21,6 +21,7 @@ client_invitation_thread = None
 start_game_event = None
 groups = []
 next_group_index = 0
+connected_clients = {}
 
 def main():
     global game_server_socket
@@ -76,17 +77,19 @@ def init_game_server_socket():
     return game_server_socket
 
 def new_game():
-    init_groups()
+    init_game_vars()
     invite_clients()
     handle_game_accepts()
 
-def init_groups():
+def init_game_vars():
     global groups
     global next_group_index
+    global connected_clients
     next_group_index = 0
     groups = []
     for i in range(config.MAX_GROUPS_COUNT):
         groups.append(Group(i))
+    connected_clients = {}
 
 def invite_clients():
     global client_invitation_thread
@@ -152,6 +155,7 @@ def accept_client(selection_key):
 
 def game_intermission_client_read(selection_key):
     global selector
+    global connected_clients
     #TODO: add to group and set team name
     #TODO: figure out whether if the first client is not in the correct
     # format, should we keep looking for his team name or just ignore
@@ -161,8 +165,12 @@ def game_intermission_client_read(selection_key):
     if should_remove_client:
         selector.unregister(client.socket)
         client.socket.close()
+        if client.addr in connected_clients:
+            del connected_clients[client.addr]
 
-def game_intermissions_admit_to_game_lobby(client):
+def game_intermissions_admit_to_game_lobby(client: GameClient):
+    global connected_clients
+
     if client.team_name is None:
         team_name, should_remove_client = game_intermission_read_team_name_core(client)
         if should_remove_client:
@@ -172,6 +180,7 @@ def game_intermissions_admit_to_game_lobby(client):
             if client.team_name is not None:
                 print(f"team '{client.team_name}' connected")
                 assign_client_to_group(client)
+                connected_clients[client.addr] = client
     else:
         ignore_client_data(client.socket)
 
