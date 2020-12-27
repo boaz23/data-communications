@@ -278,13 +278,12 @@ def game_intermissions_admit_to_game_lobby(client: GameClient):
                 print(f"team '{client.team_name}' connected")
                 assign_client_to_group(client)
                 client.group.connected_clients[client.addr] = client
-    else:
-        ignore_client_data(client.socket)
+        return False
 
     # read everything left from the client so that it won't be read
     # when the game starts, it should be carried over.
     # also, check to see if the client closed the connection
-    return False
+    return ignore_client_data(client.socket)
 
 def assign_client_to_group(client):
     global next_group_index
