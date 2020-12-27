@@ -12,3 +12,4 @@ class GameClient:
         self.addr = SocketAddress(accpected_client[1])
         self.team_name = None
         self.group = None
+        self.sent_welcome_message = False

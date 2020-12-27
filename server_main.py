@@ -15,13 +15,12 @@ from group import Group
 game_server_socket_addr = SocketAddress(network.my_addr(), config.SERVER_GAME_PORT)
 game_offer_send_addr = SocketAddress(network.broadcast_addr(), config.GAME_OFFER_PORT)
 invite_socket = None
-game_server_socket = None
-selector = None
+game_server_socket: socket.socket = None
+selector: selectors.BaseSelector = None
 client_invitation_thread = None
 start_game_event = None
 groups = []
 next_group_index = 0
-connected_clients = {}
 
 def main():
     global game_server_socket
@@ -80,16 +79,15 @@ def new_game():
     init_game_vars()
     invite_clients()
     handle_game_accepts()
+    start_game()
 
 def init_game_vars():
     global groups
     global next_group_index
-    global connected_clients
     next_group_index = 0
     groups = []
     for i in range(config.MAX_GROUPS_COUNT):
-        groups.append(Group(i))
-    connected_clients = {}
+        groups.append(Group(i + 1))
 
 def invite_clients():
     global client_invitation_thread
@@ -110,6 +108,58 @@ def handle_game_accepts():
                 accept_client(selection_key)
             elif (events & selectors.EVENT_READ) != 0:
                 game_intermission_client_read(selection_key)
+
+def start_game():
+    global game_server_socket
+    global selector
+    selector.unregister(game_server_socket)
+    prep_clients_to_selector_pre_game()
+    welcome_message = make_welcome_message()
+    game_started_do_select(welcome_message)
+
+def prep_clients_to_selector_pre_game():
+    global selector
+    global groups
+
+    for group in groups:
+        for client in group.connected_clients.values():
+            if client.team_name is None:
+                # TODO: make sure we actually remove those with no team name so far
+                remove_client()
+            else:
+                selector.modify(client.socket, selectors.EVENT_READ | selectors.EVENT_WRITE)
+
+def make_welcome_message():
+    global groups
+    welcome_message = ""
+    welcome_message += "Welcome to Keyboard Spamming Battle Royale.\n"
+    welcome_message += "".join(map(make_welcome_message_group, groups))
+    welcome_message += "Start pressing keys on your keyboard as fast as you can!!"
+    return welcome_message
+
+def make_welcome_message_group(group: Group):
+    s = ""
+    s += f"Group {group.num}:\n"
+    s += "==\n"
+    for client in group.connected_clients.values():
+        s += f"{client.team_name}\n"
+    s += "\n"
+    return s
+
+def game_started_do_select(welcome_message):
+    global selector
+    for (selection_key, events) in selector.select():
+        if (events & selectors.EVENT_WRITE) != 0:
+            client = selection_key.data
+            if client.sent_welcome_message == False:
+                send_welcome_message(client, welcome_message)
+                client.sent_welcome_message = True
+                selector.modify(client, selectors.EVENT_READ)
+        if (events & selectors.EVENT_READ) != 0:
+            pass
+
+def send_welcome_message(client, welcome_message):
+    client.socket.send(coder.encode_string(welcome_message))
 
 def invite_clients_target():
     global invite_socket
@@ -154,8 +204,6 @@ def accept_client(selection_key):
     selector.register(client.socket, selectors.EVENT_READ, client)
 
 def game_intermission_client_read(selection_key):
-    global selector
-    global connected_clients
     #TODO: add to group and set team name
     #TODO: figure out whether if the first client is not in the correct
     # format, should we keep looking for his team name or just ignore
@@ -163,14 +211,17 @@ def game_intermission_client_read(selection_key):
     client = selection_key.data
     team_name, should_remove_client = game_intermissions_admit_to_game_lobby(client)
     if should_remove_client:
-        selector.unregister(client.socket)
-        client.socket.close()
-        if client.addr in connected_clients:
-            del connected_clients[client.addr]
+        remove_client(client)
+
+def remove_client(client):
+    global selector
+
+    selector.unregister(client.socket)
+    client.socket.close()
+    if client.group is not None:
+        del client.group[client.addr]
 
 def game_intermissions_admit_to_game_lobby(client: GameClient):
-    global connected_clients
-
     if client.team_name is None:
         team_name, should_remove_client = game_intermission_read_team_name_core(client)
         if should_remove_client:
@@ -180,7 +231,7 @@ def game_intermissions_admit_to_game_lobby(client: GameClient):
             if client.team_name is not None:
                 print(f"team '{client.team_name}' connected")
                 assign_client_to_group(client)
-                connected_clients[client.addr] = client
+                client.group[client.addr] = client
     else:
         ignore_client_data(client.socket)
 
