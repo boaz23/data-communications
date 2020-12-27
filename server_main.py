@@ -52,7 +52,7 @@ def main_loop():
             has_socket_been_registered = True
             game_server_socket.listen()
 
-            print('starting a new game')
+            print("preparing for new game")
             new_game()
             game_started = True
         finally:
@@ -70,6 +70,7 @@ def main_loop():
                 print('Game over, sending out offer requests...')
 
 def disconnect_all_clients():
+    global groups
     for group in groups:
         for client in group.connected_clients.values():
             disconnect_client(client)
@@ -88,6 +89,7 @@ def new_game():
     init_game_vars()
     invite_clients()
     handle_game_accepts()
+    print('starting a new game')
     start_game()
 
 def init_game_vars():
@@ -207,9 +209,6 @@ def in_game_client_read(client):
         except BlockingIOError:
             return
 
-def increase_group_pressed_keys_count(group, message):
-
-
 def invite_clients_target():
     global invite_socket
     global start_game_event
@@ -253,7 +252,7 @@ def game_intermission_client_read(selection_key):
     # format, should we keep looking for his team name or just ignore
     # the client completely
     client = selection_key.data
-    team_name, should_remove_client = game_intermissions_admit_to_game_lobby(client)
+    should_remove_client = game_intermissions_admit_to_game_lobby(client)
     if should_remove_client:
         remove_client(client)
 
@@ -262,7 +261,7 @@ def remove_client(client):
 
     disconnect_client(client)
     if client.group is not None:
-        del client.group[client.addr]
+        del client.group.connected_clients[client.addr]
 
 def disconnect_client(client):
     selector.unregister(client.socket)
@@ -278,7 +277,7 @@ def game_intermissions_admit_to_game_lobby(client: GameClient):
             if client.team_name is not None:
                 print(f"team '{client.team_name}' connected")
                 assign_client_to_group(client)
-                client.group[client.addr] = client
+                client.group.connected_clients[client.addr] = client
     else:
         ignore_client_data(client.socket)
 

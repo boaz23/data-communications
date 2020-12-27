@@ -105,6 +105,7 @@ def register_io_for_select(game_socket):
 
     global selector
     global game_socket_selector_events
+    global has_stdin_been_registered
 
     game_socket.setblocking(False)
     selector.register(game_socket, selectors.EVENT_READ)
