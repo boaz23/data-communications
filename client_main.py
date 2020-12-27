@@ -16,6 +16,7 @@ fd_stdin = sys.stdin.fileno()
 selector = None
 has_socket_been_registered = False
 has_stdin_been_registered = False
+input_strings_buffer = []
 
 def main():
     #see the code from https://docs.python.org/2/faq/library.html#how-do-i-get-a-single-keypress-at-a-time
@@ -24,6 +25,8 @@ def main():
     oldterm = termios.tcgetattr(fd_stdin)
     newattr = termios.tcgetattr(fd_stdin)
     newattr[3] = newattr[3] & ~termios.ICANON
+    newattr[6][termios.VMIN] = 0  # cc
+    newattr[6][termios.VTIME] = 0 # cc
     termios.tcsetattr(fd_stdin, termios.TCSANOW, newattr)
 
     oldflags = fcntl.fcntl(fd_stdin, fcntl.F_GETFL)
@@ -44,25 +47,32 @@ def main_logic_loop():
     selector = None
     try:
         selector = selectors.DefaultSelector()
+        first_time = True
         while True:
-            main_logic_iter()
+            main_logic_iter(first_time)
+            first_time = False
     finally:
         if selector is not None:
             selector.close()
 
-def main_logic_iter():
+def main_logic_iter(first_time: bool):
     global selector
     global has_socket_been_registered
     global has_stdin_been_registered
+    global input_strings_buffer
 
     game_socket = None
     try:
+        input_strings_buffer = []
         has_socket_been_registered = False
         has_stdin_been_registered = False
         game_server_addr = look_for_game()
+        #game_server_addr = SocketAddress(('127.0.0.1', 12000))
         game_socket, welcome_msg = prepare_for_game(game_server_addr)
         register_io_for_select(game_socket)
         print(welcome_msg)
+        start_game(game_socket)
+        print("Server disconnected, listening for offer requests...")
     finally:
         if has_socket_been_registered:
             selector.unregister(game_socket)
@@ -80,6 +90,59 @@ def register_io_for_select(game_socket):
     has_socket_been_registered = True
     selector.register(sys.stdin, selectors.EVENT_READ)
     has_stdin_been_registered = True
+
+def start_game(game_socket):
+    global selector
+
+    while True:
+        for (selection_key, events) in selector.select():
+            if selection_key.fileobj is game_socket:
+                print(f"socket ready {events}")
+                if (events & selectors.EVENT_READ) != 0:
+                    game_closed = print_data_from_server(game_socket)
+                    if game_closed:
+                        break
+                if (events & selectors.EVENT_WRITE) != 0:
+                    send_pressed_keys(game_socket)
+                if (events & (selectors.EVENT_WRITE | selectors.EVENT_READ)) == 0:
+                    raise Exception("improper state, events for game socket selection didn't have read nor write")
+            elif selection_key.fileobj is sys.stdin:
+                print("stdin ready")
+                if (events & selectors.EVENT_READ) != 0:
+                    buffer_data_from_stdin()
+                else:
+                    raise Exception("improper state, events for stdin selection didn't have read")
+            else:
+                raise Exception("impossible state, selection was not the game socket nor stdin")
+
+def send_pressed_keys(game_socket: socket.socket):
+    global input_strings_buffer
+    # TODO: figure out whether it's ok to send whole strings
+    # or we need to send individual characters only
+    while len(input_strings_buffer) > 0:
+        s = input_strings_buffer.pop(0)
+        for c in s:
+            game_socket.send(coder.encode_string(str(c)))
+
+def print_data_from_server(game_socket: socket.socket):
+    try:
+        while True:
+            message_bytes = game_socket.recv(config.DEFAULT_RECV_BUFFER_SIZE)
+            if len(message_bytes) == 0:
+                # server closed the connection, return to look for game offers
+                return True
+            message = coder.decode_string(message_bytes)
+            print(message)
+            if len(message_bytes) < config.DEFAULT_RECV_BUFFER_SIZE:
+                break
+    except BlockingIOError:
+        # we tried to read data even though there was none
+        pass
+    return False
+
+def buffer_data_from_stdin():
+    global input_strings_buffer
+    input_strings_buffer.append(sys.stdin.read(1))
 
 if __name__ == "__main__":
     main()
