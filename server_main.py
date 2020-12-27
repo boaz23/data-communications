@@ -43,6 +43,7 @@ def main_loop():
     global selector
 
     while True:
+        game_started = False
         try:
             has_socket_been_registered = False
             selector = selectors.DefaultSelector()
@@ -53,10 +54,11 @@ def main_loop():
 
             print('starting a new game')
             new_game()
-            print('Game over, sending out offer requests...')
+            game_started = True
         finally:
             if has_socket_been_registered:
                 selector.unregister(game_server_socket)
+            disconnect_all_clients()
             if game_server_socket is not None:
                 game_server_socket.shutdown(socket.SHUT_RDWR)
                 game_server_socket.close()
@@ -64,6 +66,13 @@ def main_loop():
             if selector is not None:
                 selector.close()
                 selector = None
+            if game_started:
+                print('Game over, sending out offer requests...')
+
+def disconnect_all_clients():
+    for group in groups:
+        for client in group.connected_clients.values():
+            disconnect_client(client)
 
 def init_game_server_socket():
     global game_server_socket_addr
@@ -184,9 +193,11 @@ def make_game_over_message(winner_group):
     s += get_group_team_names_formatted_string(winner_group)
     return s
 
-
 def send_welcome_message(client, welcome_message):
     client.socket.send(coder.encode_string(welcome_message))
+
+def in_game_client_read():
+    pass
 
 def invite_clients_target():
     global invite_socket
@@ -238,10 +249,13 @@ def game_intermission_client_read(selection_key):
 def remove_client(client):
     global selector
 
-    selector.unregister(client.socket)
-    client.socket.close()
+    disconnect_client(client)
     if client.group is not None:
         del client.group[client.addr]
+
+def disconnect_client(client):
+    selector.unregister(client.socket)
+    client.socket.close()
 
 def game_intermissions_admit_to_game_lobby(client: GameClient):
     if client.team_name is None:

@@ -76,6 +76,7 @@ def main_logic_iter():
     global input_strings_buffer
 
     game_socket = None
+    game_started = False
     try:
         input_strings_buffer = []
         game_socket_selector_events = None
@@ -85,7 +86,7 @@ def main_logic_iter():
         register_io_for_select(game_socket)
         print(welcome_msg)
         start_game(game_socket)
-        print("Server disconnected, listening for offer requests...")
+        game_started = True
     finally:
         if game_socket_selector_events is not None:
             selector.unregister(game_socket)
@@ -93,6 +94,8 @@ def main_logic_iter():
             selector.unregister(sys.stdin)
         if game_socket is not None:
             game_socket.close()
+        if game_started:
+            print("Server disconnected, listening for offer requests...")
 
 def register_io_for_select(game_socket):
     """Register IO files for selection
