@@ -91,7 +91,7 @@ def handle_game_accepts():
         for (selection_key, events) in selector.select():
             if selection_key.fileobj is game_server_socket:
                 accept_client(selection_key)
-            elif events & selectors.EVENT_READ != 0:
+            elif (events & selectors.EVENT_READ) != 0:
                 accept_client_read(selection_key)
 
 def invite_clients_target():
