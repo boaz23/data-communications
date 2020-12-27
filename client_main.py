@@ -19,12 +19,10 @@ input_strings_buffer = []
 
 def main():
     #see the code from https://docs.python.org/2/faq/library.html#how-do-i-get-a-single-keypress-at-a-time
-    global fd_stdin
-
     oldterm = termios.tcgetattr(sys.stdin)
     newattr = termios.tcgetattr(sys.stdin)
     newattr[3] = newattr[3] & ~termios.ICANON
-    termios.tcsetattr(fd_stdin, termios.TCSANOW, newattr)
+    termios.tcsetattr(sys.stdin, termios.TCSANOW, newattr)
 
     oldflags = fcntl.fcntl(sys.stdin, fcntl.F_GETFL)
     fcntl.fcntl(sys.stdin, fcntl.F_SETFL, oldflags | os.O_NONBLOCK)
@@ -34,8 +32,8 @@ def main():
     except KeyboardInterrupt:
         pass
     finally:
-        termios.tcsetattr(fd_stdin, termios.TCSAFLUSH, oldterm)
-        fcntl.fcntl(fd_stdin, fcntl.F_SETFL, oldflags)
+        termios.tcsetattr(sys.stdin, termios.TCSAFLUSH, oldterm)
+        fcntl.fcntl(sys.stdin, fcntl.F_SETFL, oldflags)
 
 def main_logic_loop():
     global selector
