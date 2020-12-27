@@ -18,7 +18,7 @@ from client_game_looker import look_for_game
 from client_game_connection import prepare_for_game
 
 selector = None
-has_socket_been_registered = False
+game_socket_selector_events = None
 has_stdin_been_registered = False
 input_strings_buffer = []
 
@@ -71,14 +71,14 @@ def main_logic_iter():
     """
 
     global selector
-    global has_socket_been_registered
+    global game_socket_selector_events
     global has_stdin_been_registered
     global input_strings_buffer
 
     game_socket = None
     try:
         input_strings_buffer = []
-        has_socket_been_registered = False
+        game_socket_selector_events = None
         has_stdin_been_registered = False
         game_server_addr = look_for_game()
         game_socket, welcome_msg = prepare_for_game(game_server_addr)
@@ -87,7 +87,7 @@ def main_logic_iter():
         start_game(game_socket)
         print("Server disconnected, listening for offer requests...")
     finally:
-        if has_socket_been_registered:
+        if game_socket_selector_events is not None:
             selector.unregister(game_socket)
         if has_stdin_been_registered:
             selector.unregister(sys.stdin)
@@ -101,11 +101,11 @@ def register_io_for_select(game_socket):
     """
 
     global selector
-    global has_socket_been_registered
+    global game_socket_selector_events
 
     game_socket.setblocking(False)
-    selector.register(game_socket, selectors.EVENT_READ | selectors.EVENT_WRITE)
-    has_socket_been_registered = True
+    selector.register(game_socket, selectors.EVENT_READ)
+    game_socket_selector_events = selectors.EVENT_READ
     selector.register(sys.stdin, selectors.EVENT_READ)
     has_stdin_been_registered = True
 
@@ -120,7 +120,7 @@ def start_game(game_socket):
         for (selection_key, events) in selector.select():
             if selection_key.fileobj is sys.stdin:
                 if (events & selectors.EVENT_READ) != 0:
-                    buffer_data_from_stdin()
+                    buffer_data_from_stdin(game_socket)
                 else:
                     raise Exception("improper state, events for stdin selection didn't have read")
             elif selection_key.fileobj is game_socket:
@@ -143,12 +143,17 @@ def send_pressed_keys(game_socket: socket.socket):
     """
 
     global input_strings_buffer
+    global game_socket_selector_events
+    global selector
     # TODO: figure out whether it's ok to send whole strings
     # or we need to send individual characters only
     while len(input_strings_buffer) > 0:
         s = input_strings_buffer.pop(0)
         for c in s:
             game_socket.send(coder.encode_string(str(c)))
+    if (game_socket_selector_events & selectors.EVENT_WRITE) != 0:
+        game_socket_selector_events &= ~selectors.EVENT_WRITE
+        selector.modify(game_socket, game_socket_selector_events)
 
 def print_data_from_server(game_socket: socket.socket):
     """Prints data from the server
@@ -171,14 +176,28 @@ def print_data_from_server(game_socket: socket.socket):
         pass
     return False
 
-def buffer_data_from_stdin():
+def buffer_data_from_stdin(game_socket: socket.socket):
     """Saves input from the user
 
     Buffers input from the user to be used later in order to send it
     to the server when the socket is ready for write
     """
+    global selector
+    global game_socket_selector_events
     global input_strings_buffer
-    input_strings_buffer.append(sys.stdin.read(1))
+
+    try:
+        while True:
+            c = sys.stdin.read(1)
+            if c == '':
+                break
+            input_strings_buffer.append(c)
+    except BlockingIOError:
+        pass
+    if (game_socket_selector_events & selectors.EVENT_WRITE) == 0:
+        game_socket_selector_events |= selectors.EVENT_WRITE
+        selector.modify(game_socket, game_socket_selector_events)
+
 
 if __name__ == "__main__":
     main()
