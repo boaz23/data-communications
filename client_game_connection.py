@@ -16,7 +16,7 @@ def prepare_for_game(server_addr, before_wait_callback):
     _establish_game_connection(server_addr)
     _send_team_name()
     before_wait_callback()
-    return _wait_for_game()
+    return game_socket, _wait_for_game()
 
 def _establish_game_connection(server_addr):
     global game_socket
@@ -36,13 +36,18 @@ def _wait_for_game():
 
 if __name__ == "__main__":
     import sys
+    import argparse
     from socket_address import SocketAddress
 
     def do_nothing():
         pass
 
+    args_parser = argparse.ArgumentParser()
+    args_parser.add_argument("--host", default="127.0.0.1", required=False, dest="host")
+    args_parser.add_argument("-p, --port", default=12000, required=False, type=int, dest="port")
+    args = args_parser.parse_args()
     try:
-        msg = prepare_for_game(SocketAddress((sys.argv[1], int(sys.argv[2]))), do_nothing)
+        game_socket, msg = prepare_for_game(SocketAddress((args.host, args.port)), do_nothing)
         print(msg)
     except KeyboardInterrupt:
         pass
