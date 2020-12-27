@@ -11,11 +11,19 @@ import config
 import coder
 
 def prepare_for_game(server_addr):
+    """Creates a game connection with the server
+
+    Creates a TCP connection with the server,
+    sends the team name and waits for the game to begin.
+    Returns the welcome message from the server.
+    """
     game_socket = _establish_game_connection(server_addr)
     _send_team_name(game_socket)
     return game_socket, _wait_for_game(game_socket)
 
 def _establish_game_connection(server_addr):
+    """Creates a TCP connection with the server
+    """
     print(f"Received offer from {server_addr.host}, attempting to connect...")
     print(f"got offer from {server_addr}")
     game_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -23,9 +31,15 @@ def _establish_game_connection(server_addr):
     return game_socket
 
 def _send_team_name(game_socket):
+    """Sends the team name
+    """
     game_socket.send(coder.encode_string(f"{config.TEAM_NAME}\n"))
 
 def _wait_for_game(game_socket):
+    """Waits for the game to start
+
+    Returns the welcome message from the server.
+    """
     message_bytes = game_socket.recv(config.DEFAULT_RECV_BUFFER_SIZE)
     return coder.decode_string(message_bytes)
 

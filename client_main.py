@@ -1,3 +1,9 @@
+"""Main client module
+
+Client running logic,
+run this if you would like to run the entire client
+"""
+
 import socket
 import time
 import selectors
@@ -17,7 +23,13 @@ has_stdin_been_registered = False
 input_strings_buffer = []
 
 def main():
-    #see the code from https://docs.python.org/2/faq/library.html#how-do-i-get-a-single-keypress-at-a-time
+    """Entry function for the client
+    """
+    # This code does 2 things:
+    #   * Allows us to read one key at a time from stdin
+    #     instead of waiting for a newline (\n)
+    #   * Makes reading from stdin a non-blocking operation
+    # see the code from https://docs.python.org/2/faq/library.html#how-do-i-get-a-single-keypress-at-a-time
     oldterm = termios.tcgetattr(sys.stdin)
     newattr = termios.tcgetattr(sys.stdin)
     newattr[3] = newattr[3] & ~termios.ICANON
@@ -35,21 +47,29 @@ def main():
         fcntl.fcntl(sys.stdin, fcntl.F_SETFL, oldflags)
 
 def main_logic_loop():
+    """Game lookup and play loop
+
+    Looks for a game, joins in, and when the game ends,
+    starts it all over again
+    """
     global selector
 
     print("Client started, listening for offer requests...")
     selector = None
     try:
         selector = selectors.DefaultSelector()
-        first_time = True
         while True:
-            main_logic_iter(first_time)
-            first_time = False
+            main_logic_iter()
     finally:
         if selector is not None:
             selector.close()
 
-def main_logic_iter(first_time: bool):
+def main_logic_iter():
+    """Game lookup and play, one time exactly
+
+    Looks for a game, joins in, and when the game ends, return
+    """
+
     global selector
     global has_socket_been_registered
     global has_stdin_been_registered
@@ -75,6 +95,11 @@ def main_logic_iter(first_time: bool):
             game_socket.close()
 
 def register_io_for_select(game_socket):
+    """Register IO files for selection
+
+    Registers the needed IO files for selection (stdin and the game socket)
+    """
+
     global selector
     global has_socket_been_registered
 
@@ -85,6 +110,10 @@ def register_io_for_select(game_socket):
     has_stdin_been_registered = True
 
 def start_game(game_socket):
+    """Plays the game
+
+    Plays the game, and returns when the server closes the connection
+    """
     global selector
 
     while True:
@@ -107,6 +136,12 @@ def start_game(game_socket):
                 raise Exception("impossible state, selection was not the game socket nor stdin")
 
 def send_pressed_keys(game_socket: socket.socket):
+    """Send keys to the server
+
+    Send all the characters in the buffer saved from earlier
+    to the server one character at a time (each in a different message)
+    """
+
     global input_strings_buffer
     # TODO: figure out whether it's ok to send whole strings
     # or we need to send individual characters only
@@ -116,6 +151,11 @@ def send_pressed_keys(game_socket: socket.socket):
             game_socket.send(coder.encode_string(str(c)))
 
 def print_data_from_server(game_socket: socket.socket):
+    """Prints data from the server
+
+    Receives data from the server and prints it.
+    Returns whether the server closed the game.
+    """
     try:
         while True:
             message_bytes = game_socket.recv(config.DEFAULT_RECV_BUFFER_SIZE)
@@ -132,6 +172,11 @@ def print_data_from_server(game_socket: socket.socket):
     return False
 
 def buffer_data_from_stdin():
+    """Saves input from the user
+
+    Buffers input from the user to be used later in order to send it
+    to the server when the socket is ready for write
+    """
     global input_strings_buffer
     input_strings_buffer.append(sys.stdin.read(1))
 
