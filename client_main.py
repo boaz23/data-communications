@@ -59,8 +59,7 @@ def main_logic_iter():
     try:
         has_socket_been_registered = False
         has_stdin_been_registered = False
-        #game_server_addr = look_for_game()
-        game_server_addr = SocketAddress(('127.0.0.1', 12000))
+        game_server_addr = look_for_game()
         game_socket, welcome_msg = prepare_for_game(game_server_addr)
         register_io_for_select(game_socket)
         print(welcome_msg)
