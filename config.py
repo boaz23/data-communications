@@ -35,7 +35,7 @@ INT_SIZE_16 = 2
 INT_SIZE_32 = 4
 
 #**************************************************
-#******************* Game Offers *******************
+#******************* Game Offers ******************
 #**************************************************
 # Constants related to game offers
 GAME_OFFER_PORT = 13117
@@ -56,6 +56,11 @@ SERVER_OFFER_SENDING_DURATION = 10
 # The amount of time the server waits between sending two consecutive
 # game offers packets
 GAME_OFFER_WAIT_TIME = 0.5
+
+#**************************************************
+#******************* Game Loigc *******************
+#**************************************************
+MAX_GROUPS_COUNT = 2
 
 #**************************************************
 #****************** General Stuff *****************

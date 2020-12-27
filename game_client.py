@@ -11,3 +11,4 @@ class GameClient:
         self.socket = accpected_client[0]
         self.addr = SocketAddress(accpected_client[1])
         self.team_name = None
+        self.group = None
