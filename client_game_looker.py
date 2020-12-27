@@ -30,6 +30,8 @@ def look_for_game():
     try:
         game_offer_socket = _init_game_offer_socket()
         server_addr = _recv_game_offer(game_offer_socket)
+        while server_addr is None:
+            server_addr = _recv_game_offer(game_offer_socket)
     finally:
         if game_offer_socket is not None:
             game_offer_socket.close()
