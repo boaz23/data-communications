@@ -53,7 +53,7 @@ def main_loop():
 
             print('starting a new game')
             new_game()
-            print('game ended')
+            print('Game over, sending out offer requests...')
         finally:
             if has_socket_been_registered:
                 selector.unregister(game_server_socket)
@@ -115,7 +115,8 @@ def start_game():
     selector.unregister(game_server_socket)
     prep_clients_to_selector_pre_game()
     welcome_message = make_welcome_message()
-    game_started_do_select(welcome_message)
+    util.run_and_wait_for_timed_task(game_started_do_select, config.GAME_DURAION, args=(welcome_message,), name='in-game select')
+    print_winner()
 
 def prep_clients_to_selector_pre_game():
     global selector
@@ -140,23 +141,49 @@ def make_welcome_message():
 def make_welcome_message_group(group: Group):
     s = ""
     s += f"Group {group.num}:\n"
-    s += "==\n"
-    for client in group.connected_clients.values():
-        s += f"{client.team_name}\n"
+    s += get_group_team_names_formatted_string(group)
     s += "\n"
     return s
 
-def game_started_do_select(welcome_message):
+def get_group_team_names_formatted_string(group):
+    s = ""
+    s += "==\n"
+    for client in group.connected_clients.values():
+        s += f"{client.team_name}\n"
+    return s
+
+def game_started_do_select(e, welcome_message):
     global selector
-    for (selection_key, events) in selector.select():
-        if (events & selectors.EVENT_WRITE) != 0:
-            client = selection_key.data
-            if client.sent_welcome_message == False:
-                send_welcome_message(client, welcome_message)
-                client.sent_welcome_message = True
-                selector.modify(client, selectors.EVENT_READ)
-        if (events & selectors.EVENT_READ) != 0:
-            pass
+    while not e.is_set():
+        for (selection_key, events) in selector.select():
+            if e.is_set():
+                break
+            if (events & selectors.EVENT_WRITE) != 0:
+                client = selection_key.data
+                if client.sent_welcome_message == False:
+                    send_welcome_message(client, welcome_message)
+                    client.sent_welcome_message = True
+                    selector.modify(client, selectors.EVENT_READ)
+            if (events & selectors.EVENT_READ) != 0:
+                pass
+
+def print_winner():
+    global groups
+
+    winner_group = max(groups, key=lambda group : group.pressed_keys_counter)
+    print(make_game_over_message(winner_group))
+
+def make_game_over_message(winner_group):
+    global groups
+
+    s = ""
+    s += "Game over!\n"
+    s += " ".join(map(lambda group : f"Group {group.num} typed in {group.pressed_keys_counter} characters.", groups))
+    s += f"\nGroup {winner_group.num} wins!\n\n"
+    s += "Congratulations to the winners:\n"
+    s += get_group_team_names_formatted_string(winner_group)
+    return s
+
 
 def send_welcome_message(client, welcome_message):
     client.socket.send(coder.encode_string(welcome_message))
@@ -167,12 +194,7 @@ def invite_clients_target():
 
     invite_socket = socket.socket(socket.AF_INET, config.GAME_OFFER_PROTOCOL)
     invite_socket.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
-    e = threading.Event()
-    thread = threading.Thread(name='send game offers loop', target=send_game_offers_loop, args=(e,))
-    thread.start()
-    thread.join(config.SERVER_OFFER_SENDING_DURATION)
-    e.set()
-    thread.join()
+    util.run_and_wait_for_timed_task(send_game_offers_loop, config.SERVER_OFFER_SENDING_DURATION, name='send game offers loop')
     invite_socket.close()
     invite_socket = None
     start_game_event.set()
