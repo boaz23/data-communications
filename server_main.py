@@ -167,14 +167,14 @@ def game_started_do_select(e, welcome_message):
         for (selection_key, events) in selector.select():
             if e.is_set():
                 break
+            client = selection_key.data
             if (events & selectors.EVENT_WRITE) != 0:
-                client = selection_key.data
                 if client.sent_welcome_message == False:
                     send_welcome_message(client, welcome_message)
                     client.sent_welcome_message = True
                     selector.modify(client, selectors.EVENT_READ)
             if (events & selectors.EVENT_READ) != 0:
-                pass
+                in_game_client_read(client)
 
 def print_winner():
     global groups
@@ -196,8 +196,19 @@ def make_game_over_message(winner_group):
 def send_welcome_message(client, welcome_message):
     client.socket.send(coder.encode_string(welcome_message))
 
-def in_game_client_read():
-    pass
+def in_game_client_read(client):
+    while True:
+        try:
+            message_bytes = client.socket.recv(config.DEFAULT_RECV_BUFFER_SIZE)
+            if len(message_bytes) == 0:
+                return
+            message = coder.decode_string(message_bytes)
+            client.group.pressed_keys_counter += len(message)
+        except BlockingIOError:
+            return
+
+def increase_group_pressed_keys_count(group, message):
+
 
 def invite_clients_target():
     global invite_socket
