@@ -45,8 +45,6 @@ def main():
     except KeyboardInterrupt:
         pass
     finally:
-        #TODO: signal to the client invitation thread and
-        # wait for the it to terminate itself
         if send_game_offer_event is not None and client_invitation_thread is not None:
             send_game_offer_event.set()
             client_invitation_thread.join()
@@ -160,13 +158,16 @@ def make_welcome_message():
     global groups
     welcome_message = ""
     welcome_message += "Welcome to Keyboard Spamming Battle Royale.\n"
-    welcome_message += "".join(map(make_welcome_message_group, groups))
+    welcome_message += get_groups_team_names_with_title_formatted_string(groups)
     welcome_message += "Start pressing keys on your keyboard as fast as you can!!"
     return welcome_message
 
-def make_welcome_message_group(group: Group):
+def get_groups_team_names_with_title_formatted_string(groups):
+    return "".join(map(get_group_team_names_with_title_formatted_string, groups))
+
+def get_group_team_names_with_title_formatted_string(group: Group):
     s = ""
-    s += f"Group {group.num}:\n"
+    s += f"{group}:\n"
     s += get_group_team_names_formatted_string(group)
     s += "\n"
     return s
@@ -207,20 +208,39 @@ def game_started_do_select(e, welcome_message):
 
 def print_winner():
     global groups
+    winner_groups = find_winner_groups(groups)
+    print(make_game_over_message(winner_groups))
 
-    # TODO: handle ties
-    winner_group = max(groups, key=lambda group : group.pressed_keys_counter)
-    print(make_game_over_message(winner_group))
+def find_winner_groups(groups):
+    winner_groups = []
+    max_score = -1
+    for group in groups:
+        score = group.pressed_keys_counter
+        if max_score < score:
+            winner_groups = [group]
+            max_score = score
+        elif max_score == score:
+            winner_groups.append(group)
+    return winner_groups
 
-def make_game_over_message(winner_group):
+def make_game_over_message(winner_groups):
     global groups
 
     s = ""
     s += "Game over!\n"
-    s += " ".join(map(lambda group : f"Group {group.num} typed in {group.pressed_keys_counter} characters.", groups))
-    s += f"\nGroup {winner_group.num} wins!\n\n"
-    s += "Congratulations to the winners:\n"
-    s += get_group_team_names_formatted_string(winner_group)
+    s += " ".join(map(lambda group : f"{group} typed in {group.pressed_keys_counter} characters.", groups))
+    if len(winner_groups) == 1:
+        # no ties
+        winner_group = winner_groups[0]
+        s += f"\n{winner_group} wins!\n\n"
+        s += "Congratulations to the winners:\n"
+        s += get_group_team_names_formatted_string(winner_group)
+    else:
+        s += "\nTie between "
+        s += ", ".join(map(lambda group : f"{group}", winner_groups[:-1]))
+        s += f" and {winner_groups[-1]}\n\n"
+        s += "Tied groups:\n\n"
+        s += get_groups_team_names_with_title_formatted_string(winner_groups)
     return s
 
 def send_welcome_message(client, welcome_message):

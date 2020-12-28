@@ -5,3 +5,6 @@ class Group:
         self.num = num
         self.pressed_keys_counter = 0
         self.connected_clients = {}
+
+    def __str__(self):
+        return f"Group {self.num}"
