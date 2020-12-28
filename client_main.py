@@ -186,6 +186,7 @@ def buffer_data_from_stdin(game_socket: socket.socket):
     Buffers input from the user to be used later in order to send it
     to the server when the socket is ready for write
     """
+    #TODO: check if .read() works
     global selector
     global game_socket_selector_events
     global input_strings_buffer
