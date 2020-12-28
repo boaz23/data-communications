@@ -52,7 +52,7 @@ MSG_TYPE_OFFER_SIZE = INT_SIZE_8
 
 # The duration for which the server keeps sending (broadcasting) game
 # offers to clients
-SERVER_OFFER_SENDING_DURATION = 10
+GAME_OFFER_SENDING_DURATION = 10
 # The amount of time the server waits between sending two consecutive
 # game offers packets
 GAME_OFFER_WAIT_TIME = 0.5
@@ -73,3 +73,9 @@ PORT_NUM_SIZE = INT_SIZE_16
 SERVER_GAME_PORT = 0
 # The default size for buffers when reading data from socket connections
 DEFAULT_RECV_BUFFER_SIZE = 1 << 11 #2048
+
+# timeout for selects
+# needed because we do not want to be blocked in a select call forever
+# if don't get any input
+SERVER_GAME_ACCEPT_SELECT_TIMEOUT = 0.25
+SERVER_IN_GAME_SELECT_TIMEOUT = 0.25

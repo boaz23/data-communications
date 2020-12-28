@@ -113,7 +113,7 @@ def handle_game_accepts():
     global start_game_event
 
     while not start_game_event.is_set():
-        for (selection_key, events) in selector.select(config.GAME_OFFER_WAIT_TIME):
+        for (selection_key, events) in selector.select(config.SERVER_GAME_ACCEPT_SELECT_TIMEOUT):
             if selection_key.fileobj is game_server_socket:
                 accept_client(selection_key)
             elif (events & selectors.EVENT_READ) != 0:
@@ -169,7 +169,7 @@ def get_group_team_names_formatted_string(group):
 def game_started_do_select(e, welcome_message):
     global selector
     while not e.is_set():
-        for (selection_key, events) in selector.select():
+        for (selection_key, events) in selector.select(config.SERVER_IN_GAME_SELECT_TIMEOUT):
             if e.is_set():
                 break
             client = selection_key.data
@@ -223,7 +223,7 @@ def invite_clients_target():
 
     invite_socket = socket.socket(socket.AF_INET, config.GAME_OFFER_PROTOCOL)
     invite_socket.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
-    util.run_and_wait_for_timed_task(send_game_offers_loop, config.SERVER_OFFER_SENDING_DURATION, name='send game offers loop')
+    util.run_and_wait_for_timed_task(send_game_offers_loop, config.GAME_OFFER_SENDING_DURATION, name='send game offers loop')
     invite_socket.close()
     invite_socket = None
     start_game_event.set()

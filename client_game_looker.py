@@ -49,6 +49,7 @@ def _init_game_offer_socket():
     return game_offer_socket
 
 def _recv_game_offer(game_offer_socket):
+    #TODO: support padding
     """Receive game offer and return it
 
     Blocks to receive UDP packets.
