@@ -181,19 +181,12 @@ def print_data_from_server(game_socket: socket.socket):
     Receives data from the server and prints it.
     Returns whether the server closed the game.
     """
-    try:
-        while True:
-            message_bytes = game_socket.recv(config.DEFAULT_RECV_BUFFER_SIZE)
-            if len(message_bytes) == 0:
-                # server closed the connection, return to look for game offers
-                return True
-            message = coder.decode_string(message_bytes)
-            print(message)
-            if len(message_bytes) < config.DEFAULT_RECV_BUFFER_SIZE:
-                break
-    except BlockingIOError:
-        # we tried to read data even though there was none
-        pass
+    message_bytes = game_socket.recv(config.DEFAULT_RECV_BUFFER_SIZE)
+    if len(message_bytes) == 0:
+        # server closed the connection, return to look for game offers
+        return True
+    message = coder.decode_string(message_bytes)
+    print(message)
     return False
 
 def buffer_data_from_stdin(game_socket: socket.socket):
@@ -207,14 +200,8 @@ def buffer_data_from_stdin(game_socket: socket.socket):
     global game_socket_selector_events
     global input_strings_buffer
 
-    try:
-        while True:
-            c = sys.stdin.read(1)
-            if c == '':
-                break
-            input_strings_buffer.append(c)
-    except BlockingIOError:
-        pass
+    s = sys.stdin.read()
+    input_strings_buffer.append(s)
     if (game_socket_selector_events & selectors.EVENT_WRITE) == 0:
         game_socket_selector_events |= selectors.EVENT_WRITE
         selector.modify(game_socket, game_socket_selector_events)
