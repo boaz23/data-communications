@@ -93,7 +93,6 @@ def main_logic_iter():
             print("error connecting to the server, looking for game offers...")
             return
 
-        print(f"{game_socket}\n'{welcome_msg}'")
         register_io_for_select(game_socket)
         print(welcome_msg)
         start_game(game_socket)
