@@ -25,7 +25,7 @@ def _establish_game_connection(server_addr):
     """Creates a TCP connection with the server
     """
     print(f"Received offer from {server_addr.host}, attempting to connect...")
-    print(f"got offer from {server_addr}")
+    print(f"port {server_addr.port}")
     game_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     game_socket.connect(server_addr.to_tuple())
     return game_socket
@@ -33,6 +33,7 @@ def _establish_game_connection(server_addr):
 def _send_team_name(game_socket):
     """Sends the team name
     """
+    print("sending team name")
     game_socket.send(coder.encode_string(f"{config.TEAM_NAME}\n"))
 
 def _wait_for_game(game_socket):
@@ -40,7 +41,11 @@ def _wait_for_game(game_socket):
 
     Returns the welcome message from the server.
     """
+    print("waiting for game...")
     message_bytes = game_socket.recv(config.DEFAULT_RECV_BUFFER_SIZE)
+    if len(message_bytes) == 0:
+        # server disconnected
+        return None
     return coder.decode_string(message_bytes)
 
 if __name__ == "__main__":

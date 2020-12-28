@@ -50,6 +50,7 @@ def _listen_for_game_offets(game_offer_socket):
     server_addr = None
     while server_addr is None:
         server_addr = _recv_game_offer(game_offer_socket)
+    return server_addr
 
 def _recv_game_offer(game_offer_socket):
     #TODO: support padding

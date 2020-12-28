@@ -84,11 +84,16 @@ def main_logic_iter():
         game_server_addr = look_for_game()
         try:
             game_socket, welcome_msg = prepare_for_game(game_server_addr)
+            if welcome_msg is None:
+                print("Server disconnected, listening for offer requests...")
+                return
         except OSError:
             # error while connection/sending team name,
             # just look for another server
             print("error connecting to the server, looking for game offers...")
             return
+
+        print(f"{game_socket}\n'{welcome_msg}'")
         register_io_for_select(game_socket)
         print(welcome_msg)
         start_game(game_socket)
