@@ -190,21 +190,33 @@ def game_started_do_select(e, welcome_message):
                 break
             client = selection_key.data
             if (events & selectors.EVENT_READ) != 0:
-                # check if the client disconnected
-                message_bytes = client.socket.recv(config.DEFAULT_RECV_BUFFER_SIZE)
-                if len(message_bytes) == 0:
-                    remove_client(client)
-                elif client.sent_welcome_message == True:
-                    in_game_client_read(client, message_bytes)
-                else:
-                    # can't be since we are only reading from it because
-                    # we sent him the welcome message
-                    pass
+                game_started_read_client_data(client)
             if (events & selectors.EVENT_WRITE) != 0:
-                if client.sent_welcome_message == False:
-                    send_welcome_message(client, welcome_message)
-                    client.sent_welcome_message = True
-                    modify_client_in_selector(client, selectors.EVENT_READ)
+                game_started_send_data_to_client(client, welcome_message)
+
+def game_started_read_client_data(client):
+    # check if the client disconnected
+    try:
+        message_bytes = client.socket.recv(config.DEFAULT_RECV_BUFFER_SIZE)
+    except OSError:
+        return
+    if len(message_bytes) == 0:
+        remove_client(client)
+    elif client.sent_welcome_message == True:
+        in_game_client_read(client, message_bytes)
+    else:
+        # can't be since we are only reading from it because
+        # we sent him the welcome message
+        pass
+
+def game_started_send_data_to_client(client, welcome_message):
+    if client.sent_welcome_message == False:
+        try:
+            send_welcome_message(client, welcome_message)
+        except OSError:
+            return
+        client.sent_welcome_message = True
+        modify_client_in_selector(client, selectors.EVENT_READ)
 
 def print_winner():
     global groups
@@ -268,7 +280,11 @@ def send_game_offers_loop(e):
     send_game_offer_event = e
     print(f"broadcasting game offer to {game_offer_send_addr}")
     while not e.is_set():
-        send_game_offer()
+        try:
+            send_game_offer()
+        except OSError:
+            # just ignore send errors of offer requests
+            pass
         e.wait(config.GAME_OFFER_WAIT_TIME)
 
 def send_game_offer():
@@ -286,7 +302,12 @@ def send_game_offer():
 def accept_client(selection_key):
     global game_server_socket
     global selector
-    client = GameClient(game_server_socket.accept())
+    try:
+        client_socket = game_server_socket.accept()
+    except OSError:
+        # error accepting the client, just drop him
+        return
+    client = GameClient(client_socket)
     client.socket.setblocking(False)
     register_client_to_selector(client, selectors.EVENT_READ)
 
@@ -338,15 +359,26 @@ def remove_client(client):
 def disconnect_client(client):
     if client.is_registered_in_selector():
         unregister_client_from_selector(client)
-    client.socket.close()
+    try:
+        client.socket.close()
+    except OSError:
+        # what go wrong anyway? KEKW
+        # ignore
+        pass
 
 def assign_client_to_group(client):
     global next_group_index
     global groups
 
-    gorup = groups[next_group_index]
-    client.group = gorup
-    gorup.connected_clients[client.addr] = client
+    # TODO: consider doing a more fair assignment to groups based on
+    # the number of clients on the group.
+    # right now if a client disconnects, it may become unbalanced.
+    # so, we can drop the generally that we have N teams, and instead
+    # just assume it's 2 for simplicity and hold 2 counter,
+    # one for each group.
+    group = groups[next_group_index]
+    client.group = group
+    group.connected_clients[client.addr] = client
     next_group_index = (next_group_index + 1) % len(groups)
 
 def read_team_name_from_bytes(message_bytes):

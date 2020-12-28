@@ -104,7 +104,12 @@ def main_logic_iter():
         if has_stdin_been_registered:
             selector.unregister(sys.stdin)
         if game_socket is not None:
-            game_socket.close()
+            try:
+                game_socket.close()
+            except OSError:
+                # just ignore, no idea how to handle it anyway
+                # shouldn't be a problem to ignore
+                pass
         if game_started:
             print("Server disconnected, listening for offer requests...")
 
