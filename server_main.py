@@ -26,14 +26,24 @@ def main():
     global game_server_socket
     global selector
 
-    signal.signal(signal.SIGINT, signal.default_int_handler)
+    #signal.signal(signal.SIGINT, signal.default_int_handler)
+    selector = selectors.DefaultSelector()
+    game_server_socket = init_game_server_socket()
+
+    #TODO: remove this line
+    #config.SERVER_OFFER_SENDING_DURATION = 2
+
     try:
         print(f"Server started, listening on IP address {network.my_addr()}")
         main_loop()
     except KeyboardInterrupt:
         pass
     finally:
+        #TODO: signal to the client invitation thread and
+        # wait for the it to terminate itself
         if game_server_socket is not None:
+            #TODO: catch OSError here, because it might already be shut
+            game_server_socket.shutdown(socket.SHUT_RDWR)
             game_server_socket.close()
         if selector is not None:
             selector.close()
@@ -45,27 +55,16 @@ def main_loop():
     while True:
         game_started = False
         try:
-            has_socket_been_registered = False
-            selector = selectors.DefaultSelector()
-            game_server_socket = init_game_server_socket()
             selector.register(game_server_socket, selectors.EVENT_READ)
-            has_socket_been_registered = True
             game_server_socket.listen()
 
             print("preparing for new game")
             new_game()
             game_started = True
         finally:
-            if has_socket_been_registered:
-                selector.unregister(game_server_socket)
             disconnect_all_clients()
             if game_server_socket is not None:
                 game_server_socket.shutdown(socket.SHUT_RDWR)
-                game_server_socket.close()
-                game_server_socket = None
-            if selector is not None:
-                selector.close()
-                selector = None
             if game_started:
                 print('Game over, sending out offer requests...')
 
@@ -134,12 +133,16 @@ def prep_clients_to_selector_pre_game():
     global groups
 
     for group in groups:
-        for client in group.connected_clients.values():
+        # shallow copy the values because we might some of them
+        # and it will be updated in the values while we are iterating it
+        # an opening for trouble
+        clients = [x for x in group.connected_clients.values()]
+        for client in clients:
             if client.team_name is None:
                 # TODO: make sure we actually remove those with no team name so far
-                remove_client()
+                remove_client(client)
             else:
-                selector.modify(client.socket, selectors.EVENT_READ | selectors.EVENT_WRITE)
+                register_client_to_selector(client, selectors.EVENT_WRITE)
 
 def make_welcome_message():
     global groups
@@ -170,13 +173,18 @@ def game_started_do_select(e, welcome_message):
             if e.is_set():
                 break
             client = selection_key.data
+            if (events & selectors.EVENT_READ) != 0:
+                if client.sent_welcome_message == True:
+                    in_game_client_read(client)
+                else:
+                    # can't be since we are only reading from it because
+                    # we sent him the welcome message
+                    pass
             if (events & selectors.EVENT_WRITE) != 0:
                 if client.sent_welcome_message == False:
                     send_welcome_message(client, welcome_message)
                     client.sent_welcome_message = True
                     selector.modify(client, selectors.EVENT_READ)
-            if (events & selectors.EVENT_READ) != 0:
-                in_game_client_read(client)
 
 def print_winner():
     global groups
@@ -244,7 +252,7 @@ def accept_client(selection_key):
     global selector
     client = GameClient(game_server_socket.accept())
     client.socket.setblocking(False)
-    selector.register(client.socket, selectors.EVENT_READ, client)
+    register_client_to_selector(client, selectors.EVENT_READ)
 
 def game_intermission_client_read(selection_key):
     #TODO: add to group and set team name
@@ -257,33 +265,38 @@ def game_intermission_client_read(selection_key):
         remove_client(client)
 
 def remove_client(client):
-    global selector
-
     disconnect_client(client)
     if client.group is not None:
         del client.group.connected_clients[client.addr]
 
 def disconnect_client(client):
+    global selector
     selector.unregister(client.socket)
     client.socket.close()
 
 def game_intermissions_admit_to_game_lobby(client: GameClient):
+    global selector
+    message_bytes = client.socket.recv(config.DEFAULT_RECV_BUFFER_SIZE)
+    if len(message_bytes) == 0:
+        return True
     if client.team_name is None:
-        team_name, should_remove_client = game_intermission_read_team_name_core(client)
-        if should_remove_client:
-            return True
-        else:
-            client.team_name = team_name
-            if client.team_name is not None:
-                print(f"team '{client.team_name}' connected")
-                assign_client_to_group(client)
-                client.group.connected_clients[client.addr] = client
-        return False
+        team_name = read_team_name_from_bytes(message_bytes)
+        client.team_name = team_name
+        if client.team_name is not None:
+            print(f"team '{client.team_name}' connected")
+            assign_client_to_group(client)
+            client.group.connected_clients[client.addr] = client
 
-    # read everything left from the client so that it won't be read
-    # when the game starts, it should be carried over.
-    # also, check to see if the client closed the connection
-    return ignore_client_data(client.socket)
+            # We don't care about other data from the clients until the game starts,
+            # and we also don't want this data to be when the game starts since it
+            # was sent before then, it should not be carried over.
+            selector.unregister(client.socket)
+
+    return False
+
+def register_client_to_selector(client, events):
+    global selector
+    selector.register(client.socket, events, client)
 
 def assign_client_to_group(client):
     global next_group_index
@@ -292,39 +305,12 @@ def assign_client_to_group(client):
     client.group = groups[next_group_index]
     next_group_index = (next_group_index + 1) % len(groups)
 
-def game_intermission_read_team_name_core(client):
-    team_name = None
-    while team_name is None:
-        try:
-            message_bytes = client.socket.recv(config.DEFAULT_RECV_BUFFER_SIZE)
-            if len(message_bytes) == 0:
-                return None, True
-            team_name = read_team_name_from_bytes(message_bytes)
-        except BlockingIOError:
-            return None, False
-    return team_name, False
-
 def read_team_name_from_bytes(message_bytes):
     message_string = coder.decode_string(message_bytes)
     regex_match = re.match(r'^(\w+)\n$', message_string)
     if not regex_match:
         return None
     return regex_match.group(1)
-
-def ignore_client_data(client_socket):
-    try:
-        while True:
-            message_bytes = client_socket.recv(config.DEFAULT_RECV_BUFFER_SIZE)
-            if len(message_bytes) == 0:
-                # peer closed the connection
-                return True
-            if len(message_bytes) < config.DEFAULT_RECV_BUFFER_SIZE:
-                # we read everything, nothing is left to read
-                break
-    except BlockingIOError:
-        # we tried to read data even though there was none
-        pass
-    return False
 
 if __name__ == "__main__":
     main()
