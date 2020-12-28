@@ -31,7 +31,7 @@ def main():
     global game_server_socket
     global selector
 
-    #signal.signal(signal.SIGINT, signal.default_int_handler)
+    signal.signal(signal.SIGINT, signal.default_int_handler)
     selector = selectors.DefaultSelector()
     game_server_socket = init_game_server_socket()
     game_server_socket.listen()
