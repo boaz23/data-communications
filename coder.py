@@ -28,6 +28,7 @@ def encode_string(s):
     return s.encode(config.STRING_ENCODING)
 
 def decode_string(bytes):
+    # TODO: handle errors when decoding
     """Deocdes a string from bytes
 
     Deocdes a string from bytes using the encoding from the config

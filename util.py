@@ -2,6 +2,7 @@
 """
 import sys
 import threading
+import time
 
 import config
 
@@ -19,3 +20,6 @@ def run_and_wait_for_timed_task(task, duration, args=(), name=None):
     thread.join(duration)
     e.set()
     thread.join()
+
+def wait_retry_sleep():
+    time.sleep(config.RETRY_WAIT_TIME)

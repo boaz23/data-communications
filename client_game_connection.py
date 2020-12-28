@@ -27,7 +27,6 @@ def _establish_game_connection(server_addr):
     print(f"Received offer from {server_addr.host}, attempting to connect...")
     print(f"got offer from {server_addr}")
     game_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    #TODO: handle connection refused
     game_socket.connect(server_addr.to_tuple())
     return game_socket
 

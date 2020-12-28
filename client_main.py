@@ -82,7 +82,13 @@ def main_logic_iter():
         game_socket_selector_events = None
         has_stdin_been_registered = False
         game_server_addr = look_for_game()
-        game_socket, welcome_msg = prepare_for_game(game_server_addr)
+        try:
+            game_socket, welcome_msg = prepare_for_game(game_server_addr)
+        except OSError:
+            # error while connection/sending team name,
+            # just look for another server
+            print("error connecting to the server, looking for game offers...")
+            return
         register_io_for_select(game_socket)
         print(welcome_msg)
         start_game(game_socket)
@@ -154,7 +160,12 @@ def send_pressed_keys(game_socket: socket.socket):
     while len(input_strings_buffer) > 0:
         s = input_strings_buffer.pop(0)
         for c in s:
-            game_socket.send(coder.encode_string(str(c)))
+            for i in range(1):
+                try:
+                    game_socket.send(coder.encode_string(str(c)))
+                except OSError:
+                    # some error while sending the data, retry
+                    util.wait_retry_sleep()
     if (game_socket_selector_events & selectors.EVENT_WRITE) != 0:
         game_socket_selector_events &= ~selectors.EVENT_WRITE
         selector.modify(game_socket, game_socket_selector_events)

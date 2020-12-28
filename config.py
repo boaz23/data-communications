@@ -79,3 +79,6 @@ DEFAULT_RECV_BUFFER_SIZE = 1 << 11 #2048
 # if don't get any input
 SERVER_GAME_ACCEPT_SELECT_TIMEOUT = 0.25
 SERVER_IN_GAME_SELECT_TIMEOUT = 0.25
+
+# wait time before retrying
+RETRY_WAIT_TIME = 0.1

@@ -29,9 +29,7 @@ def look_for_game():
     print(f"waiting for game offer, listening on {_game_offer_recv_addr}")
     try:
         game_offer_socket = _init_game_offer_socket()
-        server_addr = _recv_game_offer(game_offer_socket)
-        while server_addr is None:
-            server_addr = _recv_game_offer(game_offer_socket)
+        server_addr = _listen_for_game_offets(game_offer_socket)
     finally:
         if game_offer_socket is not None:
             game_offer_socket.close()
@@ -48,6 +46,11 @@ def _init_game_offer_socket():
     game_offer_socket.bind(_game_offer_recv_addr.to_tuple())
     return game_offer_socket
 
+def _listen_for_game_offets(game_offer_socket):
+    server_addr = None
+    while server_addr is None:
+        server_addr = _recv_game_offer(game_offer_socket)
+
 def _recv_game_offer(game_offer_socket):
     #TODO: support padding
     """Receive game offer and return it
@@ -57,9 +60,20 @@ def _recv_game_offer(game_offer_socket):
     returns the server which sent the offer toghether with the port it
     said we should connected to (the port in the message)
     """
-    message_bytes, server_addr = game_offer_socket.recvfrom(config.GAME_OFFER_RECV_BUFFER_SIZE)
+    try:
+        message_bytes, server_addr = game_offer_socket.recvfrom(config.GAME_OFFER_RECV_BUFFER_SIZE)
+    except OSError:
+        # Error while reading from the socket, nothing to do really,
+        # just keep listening for more offers
+        print("error receiving game offer, continue to look for game offers...")
+        return None
+
     server_addr = SocketAddress(server_addr)
     print(f"received data from {server_addr}")
+    port = _decode_message(message_bytes)
+    return SocketAddress(server_addr.host, port)
+
+def _decode_message(message_bytes):
     if len(message_bytes) != config.GAME_OFFER_MSG_SIZE:
         util.print_err("invalid game offer: length")
         return None
@@ -72,7 +86,7 @@ def _recv_game_offer(game_offer_socket):
         util.print_err("invalid game offer: message type")
         return None
     port = coder.decode_int(message_bytes[5:7])
-    return SocketAddress(server_addr.host, port)
+    return port
 
 if __name__ == "__main__":
     try:
