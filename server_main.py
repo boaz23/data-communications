@@ -127,7 +127,6 @@ def start_game():
     print_winner()
 
 def prep_clients_to_selector_pre_game():
-    global selector
     global groups
 
     for group in groups:
@@ -186,7 +185,7 @@ def game_started_do_select(e, welcome_message):
                 if client.sent_welcome_message == False:
                     send_welcome_message(client, welcome_message)
                     client.sent_welcome_message = True
-                    selector.modify(client.socket, selectors.EVENT_READ)
+                    selector.modify(client.socket, selectors.EVENT_READ, client)
 
 def print_winner():
     global groups
@@ -278,8 +277,8 @@ def game_intermissions_admit_to_game_lobby(client: GameClient):
     if client.team_name is None:
         team_name = read_team_name_from_bytes(message_bytes)
         client.team_name = team_name
-        if client.team_name is not None:
-            print(f"team '{client.team_name}' connected")
+        if team_name is not None:
+            print(f"team '{team_name}' connected")
             assign_client_to_group(client)
 
             # We don't care about other data from the clients until the game starts,
