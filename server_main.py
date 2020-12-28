@@ -114,7 +114,7 @@ def handle_game_accepts():
     global start_game_event
 
     while not start_game_event.is_set():
-        for (selection_key, events) in selector.select():
+        for (selection_key, events) in selector.select(config.GAME_OFFER_WAIT_TIME):
             if selection_key.fileobj is game_server_socket:
                 accept_client(selection_key)
             elif (events & selectors.EVENT_READ) != 0:
