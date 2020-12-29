@@ -197,9 +197,12 @@ def print_data_from_server(game_socket: socket.socket):
     Receives data from the server and prints it.
     Returns whether the server closed the game.
     """
-    message_bytes = game_socket.recv(config.DEFAULT_RECV_BUFFER_SIZE)
-    if len(message_bytes) == 0:
-        # server closed the connection, return to look for game offers
+    try:
+        message_bytes = game_socket.recv(config.DEFAULT_RECV_BUFFER_SIZE)
+        if len(message_bytes) == 0:
+            # server closed the connection, return to look for game offers
+            return True
+    except OSError:
         return True
     message = coder.decode_string(message_bytes)
     print(message)
