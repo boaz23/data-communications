@@ -45,6 +45,7 @@ def _init_game_offer_socket():
     """
     game_offer_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     game_offer_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    game_offer_socket.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
     game_offer_socket.bind(_game_offer_recv_addr.to_tuple())
     return game_offer_socket
 
