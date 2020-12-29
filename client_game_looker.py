@@ -17,7 +17,7 @@ import util
 from socket_address import SocketAddress
 
 # This is the address which we will listen for packets
-_game_offer_recv_addr = SocketAddress(network.my_addr(), config.GAME_OFFER_PORT)
+_game_offer_recv_addr = SocketAddress(network.broadcast_addr(), config.GAME_OFFER_PORT)
 
 
 def look_for_game():
