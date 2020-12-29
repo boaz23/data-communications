@@ -31,7 +31,7 @@ def main():
     # waiting for a newline (\n)
     oldterm = termios.tcgetattr(sys.stdin)
     newattr = termios.tcgetattr(sys.stdin)
-    newattr[3] = newattr[3] & ~(termios.ICANON | termios.ECHO)
+    newattr[3] = newattr[3] & ~termios.ICANON
     termios.tcsetattr(sys.stdin, termios.TCSANOW, newattr)
 
     # Makes reading from stdin a non-blocking operation
@@ -61,6 +61,7 @@ def main_logic_loop():
     try:
         selector = selectors.DefaultSelector()
         while True:
+            #set_terminal_echo(False)
             main_logic_iter()
     finally:
         if selector is not None:
@@ -140,6 +141,7 @@ def start_game(game_socket):
     """
     global selector
 
+    #set_terminal_echo(True)
     while True:
         for (selection_key, events) in selector.select():
             if selection_key.fileobj is sys.stdin:
@@ -217,6 +219,18 @@ def buffer_data_from_stdin(game_socket: socket.socket):
     if (game_socket_selector_events & selectors.EVENT_WRITE) == 0:
         game_socket_selector_events |= selectors.EVENT_WRITE
         selector.modify(game_socket, game_socket_selector_events)
+
+
+def set_terminal_echo(is_on):
+    newattr = termios.tcgetattr(sys.stdin)
+    c_lflags = newattr[3]
+    if is_on != ((c_lflags & termios.ECHO) != 0):
+        if is_on:
+            c_lflags |= termios.ECHO
+        else:
+            c_lflags &= ~termios.ECHO
+        newattr[3] = c_lflags
+        termios.tcsetattr(sys.stdin, termios.TCSANOW, newattr)
 
 
 if __name__ == "__main__":
