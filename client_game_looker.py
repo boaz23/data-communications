@@ -19,7 +19,7 @@ import util
 from socket_address import SocketAddress
 
 # This is the address which we will listen for packets
-_game_offer_recv_addr = SocketAddress(network.my_addr(), config.GAME_OFFER_PORT)
+_game_offer_recv_addr = SocketAddress(network.broadcast_addr(), config.GAME_OFFER_PORT)
 
 
 def look_for_game(selector: selectors.BaseSelector):
@@ -52,6 +52,7 @@ def _init_game_offer_socket():
     """
     game_offer_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     game_offer_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    game_offer_socket.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
     game_offer_socket.bind(_game_offer_recv_addr.to_tuple())
     game_offer_socket.setblocking(False)
     return game_offer_socket
@@ -89,6 +90,8 @@ def _recv_game_offer(game_offer_socket):
     server_addr = SocketAddress(server_addr)
     print(f"received data from {server_addr}")
     port = _decode_message(message_bytes)
+    if port is None:
+        return None
     return SocketAddress(server_addr.host, port)
 
 
