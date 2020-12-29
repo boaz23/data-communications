@@ -39,7 +39,7 @@ def main():
     try:
         main_logic_loop()
     except KeyboardInterrupt:
-        pass
+        print("")
     finally:
         termios.tcsetattr(sys.stdin, termios.TCSAFLUSH, oldterm)
         fcntl.fcntl(sys.stdin, fcntl.F_SETFL, oldflags)

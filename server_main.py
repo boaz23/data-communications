@@ -43,7 +43,7 @@ def main():
         print(f"Server started, listening on IP address {network.my_addr()}")
         main_loop()
     except KeyboardInterrupt:
-        pass
+        print("")
     finally:
         if send_game_offer_event is not None and client_invitation_thread is not None:
             send_game_offer_event.set()
@@ -137,6 +137,8 @@ def handle_game_accepts():
 
     while not start_game_event.is_set():
         for (selection_key, events) in selector.select(config.SERVER_GAME_ACCEPT_SELECT_TIMEOUT):
+            if start_game_event.is_set():
+                break
             if selection_key.fileobj is game_server_socket:
                 accept_client(selection_key)
             elif (events & selectors.EVENT_READ) != 0:
@@ -360,7 +362,10 @@ def game_intermissions_admit_to_game_lobby(client: GameClient):
     # We don't want further data from the client to be
     # carried over to the game, so just read it regardless
     # if we got his team name
-    message_bytes = client.socket.recv(config.DEFAULT_RECV_BUFFER_SIZE)
+    try:
+        message_bytes = client.socket.recv(config.DEFAULT_RECV_BUFFER_SIZE)
+    except OSError:
+        return
     if len(message_bytes) == 0:
         return True
     if client.team_name is None:
@@ -406,12 +411,6 @@ def disconnect_client(client):
 def assign_client_to_group(client):
     global groups
 
-    # TODO: consider doing a more fair assignment to groups based on
-    # the number of clients on the group.
-    # right now if a client disconnects, it may become unbalanced.
-    # so, we can drop the generally that we have N teams, and instead
-    # just assume it's 2 for simplicity and hold 2 counter,
-    # one for each group.
     min_group = min(groups, key=lambda group: len(group.connected_clients))
     client.group = min_group
     min_group.connected_clients[client.addr] = client
