@@ -15,16 +15,17 @@ from group import Group
 game_server_socket_addr = SocketAddress(network.my_addr(), config.SERVER_GAME_PORT)
 game_offer_send_addr = SocketAddress(network.broadcast_addr(), config.GAME_OFFER_PORT)
 
-game_server_socket: socket.socket = None
-selector: selectors.BaseSelector = None
+game_server_socket: socket.socket
+selector: selectors.BaseSelector
 
-invite_socket = None
-client_invitation_thread = None
-start_game_event = None
-send_game_offer_event = None
-in_game_select_event = None
+invite_socket: socket.socket
+client_invitation_thread: threading.Thread
+start_game_event: threading.Event
+send_game_offer_event: threading.Event
+in_game_select_event = threading.Event
 
 groups = []
+
 
 def main():
     global game_server_socket
@@ -32,11 +33,11 @@ def main():
 
     signal.signal(signal.SIGINT, signal.default_int_handler)
     selector = selectors.DefaultSelector()
-    game_server_socket = init_game_server_socket()
+    init_game_server_socket()
     game_server_socket.listen()
 
-    #TODO: remove this line
-    #config.SERVER_OFFER_SENDING_DURATION = 5
+    # TODO: remove this line
+    # config.SERVER_OFFER_SENDING_DURATION = 5
 
     try:
         print(f"Server started, listening on IP address {network.my_addr()}")
@@ -55,9 +56,16 @@ def main():
         if selector is not None:
             selector.close()
 
+
 def main_loop():
     global game_server_socket
     global selector
+
+    global invite_socket
+    global client_invitation_thread
+    global start_game_event
+    global send_game_offer_event
+    global in_game_select_event
 
     while True:
         invite_socket = None
@@ -78,21 +86,25 @@ def main_loop():
             if game_started:
                 print('Game over, sending out offer requests...')
 
+
 def disconnect_all_clients():
     global groups
     for group in groups:
         for client in group.connected_clients.values():
             disconnect_client(client)
 
+
 def init_game_server_socket():
     global game_server_socket_addr
+    global game_server_socket
+
     game_server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     game_server_socket.bind(game_server_socket_addr.to_tuple())
     game_server_socket_addr = SocketAddress(game_server_socket.getsockname())
     print(game_server_socket_addr)
     game_server_socket.setblocking(False)
     game_server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    return game_server_socket
+
 
 def new_game():
     init_game_vars()
@@ -101,11 +113,13 @@ def new_game():
     print('starting a new game')
     start_game()
 
+
 def init_game_vars():
     global groups
     groups = []
     for i in range(config.MAX_GROUPS_COUNT):
         groups.append(Group(i + 1))
+
 
 def invite_clients():
     global client_invitation_thread
@@ -114,6 +128,7 @@ def invite_clients():
     start_game_event = threading.Event()
     client_invitation_thread = threading.Thread(name='invite clients', target=invite_clients_target)
     client_invitation_thread.start()
+
 
 def handle_game_accepts():
     global game_server_socket
@@ -127,14 +142,17 @@ def handle_game_accepts():
             elif (events & selectors.EVENT_READ) != 0:
                 game_intermission_client_read(selection_key)
 
+
 def start_game():
     global game_server_socket
     global selector
     selector.unregister(game_server_socket)
     prep_clients_to_selector_pre_game()
     welcome_message = make_welcome_message()
-    util.run_and_wait_for_timed_task(game_started_do_select, config.GAME_DURAION, args=(welcome_message,), name='in-game select')
+    util.run_and_wait_for_timed_task(game_do_select, config.GAME_DURAION, args=(welcome_message,),
+                                     name='in-game select')
     print_winner()
+
 
 def prep_clients_to_selector_pre_game():
     global groups
@@ -149,7 +167,8 @@ def prep_clients_to_selector_pre_game():
                 # TODO: make sure we actually remove those with no team name so far
                 remove_client(client)
             else:
-                register_client_to_selector(client, selectors.EVENT_WRITE)
+                register_client_to_selector(client, selectors.EVENT_READ | selectors.EVENT_WRITE)
+
 
 def make_welcome_message():
     global groups
@@ -159,8 +178,10 @@ def make_welcome_message():
     welcome_message += "Start pressing keys on your keyboard as fast as you can!!"
     return welcome_message
 
+
 def get_groups_team_names_with_title_formatted_string(groups):
     return "".join(map(get_group_team_names_with_title_formatted_string, groups))
+
 
 def get_group_team_names_with_title_formatted_string(group: Group):
     s = ""
@@ -169,6 +190,7 @@ def get_group_team_names_with_title_formatted_string(group: Group):
     s += "\n"
     return s
 
+
 def get_group_team_names_formatted_string(group):
     s = ""
     s += "==\n"
@@ -176,7 +198,8 @@ def get_group_team_names_formatted_string(group):
         s += f"{client.team_name}\n"
     return s
 
-def game_started_do_select(e, welcome_message):
+
+def game_do_select(e, welcome_message):
     global selector
     global in_game_select_event
 
@@ -191,34 +214,39 @@ def game_started_do_select(e, welcome_message):
             if (events & selectors.EVENT_WRITE) != 0:
                 game_started_send_data_to_client(client, welcome_message)
 
+
 def game_started_read_client_data(client):
-    # check if the client disconnected
     try:
         message_bytes = client.socket.recv(config.DEFAULT_RECV_BUFFER_SIZE)
     except OSError:
         return
+    # check if the client disconnected
     if len(message_bytes) == 0:
         remove_client(client)
-    elif client.sent_welcome_message == True:
+    elif client.sent_welcome_message:
         in_game_client_read(client, message_bytes)
     else:
-        # can't be since we are only reading from it because
-        # we sent him the welcome message
+        # eat up characters from the client before the game begins since
+        # the client can't already be sending characters before he even
+        # got the welcome message...
         pass
 
+
 def game_started_send_data_to_client(client, welcome_message):
-    if client.sent_welcome_message == False:
+    if not client.sent_welcome_message:
         try:
             send_welcome_message(client, welcome_message)
         except OSError:
             return
         client.sent_welcome_message = True
-        modify_client_in_selector(client, selectors.EVENT_READ)
+        register_client_to_selector(client, selectors.EVENT_READ)
+
 
 def print_winner():
     global groups
     winner_groups = find_winner_groups(groups)
     print(make_game_over_message(winner_groups))
+
 
 def find_winner_groups(groups):
     winner_groups = []
@@ -232,12 +260,13 @@ def find_winner_groups(groups):
             winner_groups.append(group)
     return winner_groups
 
+
 def make_game_over_message(winner_groups):
     global groups
 
     s = ""
     s += "Game over!\n"
-    s += " ".join(map(lambda group : f"{group} typed in {group.pressed_keys_counter} characters.", groups))
+    s += " ".join(map(lambda group: f"{group} typed in {group.pressed_keys_counter} characters.", groups))
     if len(winner_groups) == 1:
         # no ties
         winner_group = winner_groups[0]
@@ -246,18 +275,21 @@ def make_game_over_message(winner_groups):
         s += get_group_team_names_formatted_string(winner_group)
     else:
         s += "\nTie between "
-        s += ", ".join(map(lambda group : f"{group}", winner_groups[:-1]))
+        s += ", ".join(map(lambda group: f"{group}", winner_groups[:-1]))
         s += f" and {winner_groups[-1]}\n\n"
         s += "Tied groups:\n\n"
         s += get_groups_team_names_with_title_formatted_string(winner_groups)
     return s
 
+
 def send_welcome_message(client, welcome_message):
     client.socket.send(coder.encode_string(welcome_message))
+
 
 def in_game_client_read(client, message_bytes):
     message = coder.decode_string(message_bytes)
     client.group.pressed_keys_counter += len(message)
+
 
 def invite_clients_target():
     global invite_socket
@@ -265,10 +297,12 @@ def invite_clients_target():
 
     invite_socket = socket.socket(socket.AF_INET, config.GAME_OFFER_PROTOCOL)
     invite_socket.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
-    util.run_and_wait_for_timed_task(send_game_offers_loop, config.GAME_OFFER_SENDING_DURATION, name='send game offers loop')
+    util.run_and_wait_for_timed_task(send_game_offers_loop, config.GAME_OFFER_SENDING_DURATION,
+                                     name='send game offers loop')
     invite_socket.close()
     invite_socket = None
     start_game_event.set()
+
 
 def send_game_offers_loop(e):
     global game_offer_send_addr
@@ -284,6 +318,7 @@ def send_game_offers_loop(e):
             pass
         e.wait(config.GAME_OFFER_WAIT_TIME)
 
+
 def send_game_offer():
     global invite_socket
     global game_server_socket_addr
@@ -295,6 +330,7 @@ def send_game_offer():
     message_bytes += coder.encode_int(config.MSG_TYPE_OFFER, config.MSG_TYPE_OFFER_SIZE)
     message_bytes += coder.encode_int(game_server_socket_addr.port, config.PORT_NUM_SIZE)
     invite_socket.sendto(message_bytes, game_offer_send_addr.to_tuple())
+
 
 def accept_client(selection_key):
     global game_server_socket
@@ -308,8 +344,9 @@ def accept_client(selection_key):
     client.socket.setblocking(False)
     register_client_to_selector(client, selectors.EVENT_READ)
 
+
 def game_intermission_client_read(selection_key):
-    #TODO: figure out whether if the first client is not in the correct
+    # TODO: figure out whether if the first client is not in the correct
     # format, should we keep looking for his team name or just ignore
     # the client completely
     client = selection_key.data
@@ -317,8 +354,12 @@ def game_intermission_client_read(selection_key):
     if should_remove_client:
         remove_client(client)
 
+
 def game_intermissions_admit_to_game_lobby(client: GameClient):
     global selector
+    # We don't want further data from the client to be
+    # carried over to the game, so just read it regardless
+    # if we got his team name
     message_bytes = client.socket.recv(config.DEFAULT_RECV_BUFFER_SIZE)
     if len(message_bytes) == 0:
         return True
@@ -329,29 +370,27 @@ def game_intermissions_admit_to_game_lobby(client: GameClient):
             print(f"team '{team_name}' connected")
             assign_client_to_group(client)
 
-            # We don't care about other data from the clients until the game starts,
-            # and we also don't want this data to be when the game starts since it
-            # was sent before then, it should not be carried over.
-            unregister_client_from_selector(client)
-
     return False
+
 
 def register_client_to_selector(client, events):
     global selector
-    client.register_to_selector(selector, events)
+    if client.is_registered_in_selector():
+        client.modify_in_selector(selector, events)
+    else:
+        client.register_to_selector(selector, events)
 
-def modify_client_in_selector(client, events):
-    global selector
-    client.modify_in_selector(selector, events)
 
 def unregister_client_from_selector(client):
     global selector
     client.unregister_from_selector(selector)
 
+
 def remove_client(client):
     disconnect_client(client)
     if client.group is not None:
         del client.group.connected_clients[client.addr]
+
 
 def disconnect_client(client):
     if client.is_registered_in_selector():
@@ -363,6 +402,7 @@ def disconnect_client(client):
         # ignore
         pass
 
+
 def assign_client_to_group(client):
     global groups
 
@@ -372,9 +412,10 @@ def assign_client_to_group(client):
     # so, we can drop the generally that we have N teams, and instead
     # just assume it's 2 for simplicity and hold 2 counter,
     # one for each group.
-    min_group = min(groups, key=lambda group : len(group.connected_clients))
+    min_group = min(groups, key=lambda group: len(group.connected_clients))
     client.group = min_group
     min_group.connected_clients[client.addr] = client
+
 
 def read_team_name_from_bytes(message_bytes):
     message_string = coder.decode_string(message_bytes)
@@ -382,6 +423,7 @@ def read_team_name_from_bytes(message_bytes):
     if not regex_match:
         return None
     return regex_match.group(1)
+
 
 if __name__ == "__main__":
     main()

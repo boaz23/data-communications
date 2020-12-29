@@ -5,12 +5,10 @@ run this if you would like to run the entire client
 """
 
 import socket
-import time
 import selectors
 import termios, fcntl, sys, os
 
 import config
-import network
 import coder
 import util
 
