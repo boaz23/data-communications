@@ -25,7 +25,6 @@ send_game_offer_event = None
 in_game_select_event = None
 
 groups = []
-next_group_index = 0
 
 def main():
     global game_server_socket
@@ -104,8 +103,6 @@ def new_game():
 
 def init_game_vars():
     global groups
-    global next_group_index
-    next_group_index = 0
     groups = []
     for i in range(config.MAX_GROUPS_COUNT):
         groups.append(Group(i + 1))
@@ -367,7 +364,6 @@ def disconnect_client(client):
         pass
 
 def assign_client_to_group(client):
-    global next_group_index
     global groups
 
     # TODO: consider doing a more fair assignment to groups based on
@@ -376,10 +372,9 @@ def assign_client_to_group(client):
     # so, we can drop the generally that we have N teams, and instead
     # just assume it's 2 for simplicity and hold 2 counter,
     # one for each group.
-    group = groups[next_group_index]
-    client.group = group
-    group.connected_clients[client.addr] = client
-    next_group_index = (next_group_index + 1) % len(groups)
+    min_group = min(groups, key=lambda group : len(group.connected_clients))
+    client.group = min_group
+    min_group.connected_clients[client.addr] = client
 
 def read_team_name_from_bytes(message_bytes):
     message_string = coder.decode_string(message_bytes)
