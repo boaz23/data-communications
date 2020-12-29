@@ -77,6 +77,8 @@ def _recv_game_offer(game_offer_socket):
     server_addr = SocketAddress(server_addr)
     print(f"received data from {server_addr}")
     port = _decode_message(message_bytes)
+    if port is None:
+        return None
     return SocketAddress(server_addr.host, port)
 
 
