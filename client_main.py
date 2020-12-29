@@ -26,16 +26,15 @@ input_strings_buffer = []
 def main():
     """Entry function for the client
     """
-    # This code does 2 things:
-    #   * Allows us to read one key at a time from stdin
-    #     instead of waiting for a newline (\n)
-    #   * Makes reading from stdin a non-blocking operation
     # see the code from https://docs.python.org/2/faq/library.html#how-do-i-get-a-single-keypress-at-a-time
+    #  Allows us to read one key at a time from stdin instead of
+    # waiting for a newline (\n)
     oldterm = termios.tcgetattr(sys.stdin)
     newattr = termios.tcgetattr(sys.stdin)
-    newattr[3] = newattr[3] & ~termios.ICANON
+    newattr[3] = newattr[3] & ~(termios.ICANON | termios.ECHO)
     termios.tcsetattr(sys.stdin, termios.TCSANOW, newattr)
 
+    # Makes reading from stdin a non-blocking operation
     oldflags = fcntl.fcntl(sys.stdin, fcntl.F_GETFL)
     fcntl.fcntl(sys.stdin, fcntl.F_SETFL, oldflags | os.O_NONBLOCK)
 
@@ -44,6 +43,7 @@ def main():
     except KeyboardInterrupt:
         print("")
     finally:
+        # Restore the old settings
         termios.tcsetattr(sys.stdin, termios.TCSAFLUSH, oldterm)
         fcntl.fcntl(sys.stdin, fcntl.F_SETFL, oldflags)
 
