@@ -15,6 +15,7 @@ class GameClient:
         self.group = None
         self.sent_welcome_message = False
         self.selector_events = None
+        self.is_connected = True
 
     def is_registered_in_selector(self):
         return self.selector_events is not None

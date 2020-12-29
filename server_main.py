@@ -91,7 +91,8 @@ def disconnect_all_clients():
     global groups
     for group in groups:
         for client in group.connected_clients.values():
-            disconnect_client(client)
+            if client.is_connected:
+                disconnect_client(client)
 
 
 def init_game_server_socket():
@@ -206,7 +207,7 @@ def game_do_select(e, welcome_message):
     global in_game_select_event
 
     in_game_select_event = e
-    while not e.is_set():
+    while is_in_game():
         for (selection_key, events) in selector.select(config.SERVER_IN_GAME_SELECT_TIMEOUT):
             if e.is_set():
                 break
@@ -215,6 +216,11 @@ def game_do_select(e, welcome_message):
                 game_started_read_client_data(client)
             if (events & selectors.EVENT_WRITE) != 0:
                 game_started_send_data_to_client(client, welcome_message)
+
+
+def is_in_game():
+    global in_game_select_event
+    return not in_game_select_event.is_set()
 
 
 def game_started_read_client_data(client):
@@ -393,15 +399,18 @@ def unregister_client_from_selector(client):
 
 def remove_client(client):
     disconnect_client(client)
-    if client.group is not None:
+    if client.group is not None and not is_in_game():
         del client.group.connected_clients[client.addr]
 
 
 def disconnect_client(client):
+    if not client.is_connected:
+        return
     if client.is_registered_in_selector():
         unregister_client_from_selector(client)
     try:
         client.socket.close()
+        client.is_connected = False
     except OSError:
         # what go wrong anyway? KEKW
         # ignore
