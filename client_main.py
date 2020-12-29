@@ -19,7 +19,6 @@ from client_game_looker import look_for_game
 
 selector: selectors.BaseSelector
 game_socket_selector_events: int
-has_stdin_been_registered: bool
 input_strings_buffer = []
 
 
@@ -60,10 +59,12 @@ def main_logic_loop():
     selector = None
     try:
         selector = selectors.DefaultSelector()
+        selector.register(sys.stdin, selectors.EVENT_READ)
         while True:
             #set_terminal_echo(False)
             main_logic_iter()
     finally:
+        selector.unregister(sys.stdin)
         if selector is not None:
             selector.close()
 
@@ -75,38 +76,29 @@ def main_logic_iter():
     """
 
     global selector
-    global game_socket_selector_events
-    global has_stdin_been_registered
     global input_strings_buffer
+    global game_socket_selector_events
 
     game_socket = None
     game_started = False
+    game_socket_registered = False
     try:
         input_strings_buffer = []
-        game_socket_selector_events = None
-        has_stdin_been_registered = False
-        game_server_addr = look_for_game()
-        try:
-            game_socket, welcome_msg = prepare_for_game(game_server_addr)
-            if welcome_msg is None:
-                print("Server disconnected, listening for offer requests...")
-                return
-        except OSError:
-            # error while connection/sending team name,
-            # just look for another server
-            print("error connecting to the server, looking for game offers...")
+        game_server_addr = look_for_game(selector)
+        game_socket, welcome_msg, game_socket_registered = prepare_for_game(selector, game_server_addr)
+        if welcome_msg is None:
+            print("Server disconnected, listening for offer requests...")
             return
 
-        register_io_for_select(game_socket)
+        selector.modify(game_socket, selectors.EVENT_READ)
+        game_socket_selector_events = selectors.EVENT_READ
         print(welcome_msg)
         start_game(game_socket)
         game_started = True
     finally:
-        if game_socket_selector_events is not None:
-            selector.unregister(game_socket)
-        if has_stdin_been_registered:
-            selector.unregister(sys.stdin)
         if game_socket is not None:
+            if game_socket_registered:
+                selector.unregister(game_socket)
             try:
                 game_socket.close()
             except OSError:
@@ -115,23 +107,6 @@ def main_logic_iter():
                 pass
         if game_started:
             print("Server disconnected, listening for offer requests...")
-
-
-def register_io_for_select(game_socket):
-    """Register IO files for selection
-
-    Registers the needed IO files for selection (stdin and the game socket)
-    """
-
-    global selector
-    global game_socket_selector_events
-    global has_stdin_been_registered
-
-    game_socket.setblocking(False)
-    selector.register(game_socket, selectors.EVENT_READ)
-    game_socket_selector_events = selectors.EVENT_READ
-    selector.register(sys.stdin, selectors.EVENT_READ)
-    has_stdin_been_registered = True
 
 
 def start_game(game_socket):

@@ -9,6 +9,8 @@ Functions:
 """
 
 import socket
+import selectors
+import sys
 
 import config
 import network
@@ -20,7 +22,7 @@ from socket_address import SocketAddress
 _game_offer_recv_addr = SocketAddress(network.my_addr(), config.GAME_OFFER_PORT)
 
 
-def look_for_game():
+def look_for_game(selector: selectors.BaseSelector):
     """Looks for a game offer and returns the server with the port
 
     Initiates a UDP socket and listens for a game offer and
@@ -29,11 +31,16 @@ def look_for_game():
 
     print(f"waiting for game offer, listening on {_game_offer_recv_addr}")
     game_offer_socket = None
+    game_offer_socket_registered = False
     try:
         game_offer_socket = _init_game_offer_socket()
-        server_addr = _listen_for_game_offets(game_offer_socket)
+        selector.register(game_offer_socket, selectors.EVENT_READ)
+        game_offer_socket_registered = True
+        server_addr = _listen_for_game_offers(selector, game_offer_socket)
     finally:
         if game_offer_socket is not None:
+            if game_offer_socket_registered:
+                selector.unregister(game_offer_socket)
             game_offer_socket.close()
     return server_addr
 
@@ -46,13 +53,19 @@ def _init_game_offer_socket():
     game_offer_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     game_offer_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     game_offer_socket.bind(_game_offer_recv_addr.to_tuple())
+    game_offer_socket.setblocking(False)
     return game_offer_socket
 
 
-def _listen_for_game_offets(game_offer_socket):
+def _listen_for_game_offers(selector: selectors.BaseSelector, game_offer_socket):
     server_addr = None
     while server_addr is None:
-        server_addr = _recv_game_offer(game_offer_socket)
+        for (selection_key, events) in selector.select():
+            if selection_key.fileobj is sys.stdin:
+                # read everything so it won't be sent in the game
+                sys.stdin.read()
+            else:
+                server_addr = _recv_game_offer(game_offer_socket)
     return server_addr
 
 
@@ -83,8 +96,8 @@ def _decode_message(message_bytes):
     if len(message_bytes) != config.GAME_OFFER_MSG_SIZE:
         util.print_err("invalid game offer: length")
         return None
-    magic_coockie = coder.decode_int(message_bytes[0:4])
-    if magic_coockie != config.MAGIC_COOKIE:
+    magic_cookie = coder.decode_int(message_bytes[0:4])
+    if magic_cookie != config.MAGIC_COOKIE:
         util.print_err("invalid game offer: cookie")
         return None
     msg_type = coder.decode_int(message_bytes[4:5])
@@ -98,8 +111,10 @@ def _decode_message(message_bytes):
 if __name__ == "__main__":
     def main():
         try:
+            selector = selectors.DefaultSelector()
+            selector.register(sys.stdin)
             while True:
-                server_addr = look_for_game()
+                server_addr = look_for_game(selector)
                 print(f"received offer from {server_addr}")
         except KeyboardInterrupt:
             pass
