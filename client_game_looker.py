@@ -19,6 +19,7 @@ from socket_address import SocketAddress
 # This is the address which we will listen for packets
 _game_offer_recv_addr = SocketAddress(network.my_addr(), config.GAME_OFFER_PORT)
 
+
 def look_for_game():
     """Looks for a game offer and returns the server with the port
 
@@ -27,14 +28,15 @@ def look_for_game():
     """
 
     print(f"waiting for game offer, listening on {_game_offer_recv_addr}")
+    game_offer_socket = None
     try:
         game_offer_socket = _init_game_offer_socket()
         server_addr = _listen_for_game_offets(game_offer_socket)
     finally:
         if game_offer_socket is not None:
             game_offer_socket.close()
-        game_offer_socket = None
     return server_addr
+
 
 def _init_game_offer_socket():
     """Initiates the socket
@@ -46,14 +48,16 @@ def _init_game_offer_socket():
     game_offer_socket.bind(_game_offer_recv_addr.to_tuple())
     return game_offer_socket
 
+
 def _listen_for_game_offets(game_offer_socket):
     server_addr = None
     while server_addr is None:
         server_addr = _recv_game_offer(game_offer_socket)
     return server_addr
 
+
 def _recv_game_offer(game_offer_socket):
-    #TODO: support padding
+    # TODO: support padding
     """Receive game offer and return it
 
     Blocks to receive UDP packets.
@@ -74,6 +78,7 @@ def _recv_game_offer(game_offer_socket):
     port = _decode_message(message_bytes)
     return SocketAddress(server_addr.host, port)
 
+
 def _decode_message(message_bytes):
     if len(message_bytes) != config.GAME_OFFER_MSG_SIZE:
         util.print_err("invalid game offer: length")
@@ -89,10 +94,14 @@ def _decode_message(message_bytes):
     port = coder.decode_int(message_bytes[5:7])
     return port
 
+
 if __name__ == "__main__":
-    try:
-        while True:
-            server_addr = look_for_game()
-            print(f"received offer from {server_addr}")
-    except KeyboardInterrupt:
-        pass
+    def main():
+        try:
+            while True:
+                server_addr = look_for_game()
+                print(f"received offer from {server_addr}")
+        except KeyboardInterrupt:
+            pass
+
+    main()

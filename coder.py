@@ -3,6 +3,7 @@
 
 import config
 
+
 def encode_int(n, size):
     """Enocdes an integer to bytes
 
@@ -10,6 +11,7 @@ def encode_int(n, size):
     (endianness from the config)
     """
     return n.to_bytes(size, config.INTEGER_ENDIANNESS)
+
 
 def decode_int(bytes):
     """Deocdes an integer from bytes
@@ -19,6 +21,7 @@ def decode_int(bytes):
     """
     return int.from_bytes(bytes, config.INTEGER_ENDIANNESS)
 
+
 def encode_string(s):
     """Encodes a string to bytes
 
@@ -26,6 +29,7 @@ def encode_string(s):
     (endianness from the config)
     """
     return s.encode(config.STRING_ENCODING)
+
 
 def decode_string(bytes):
     # TODO: handle errors when decoding

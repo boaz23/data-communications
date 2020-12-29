@@ -7,10 +7,12 @@ to start
 
 import socket
 
-import config
 import coder
+import config
+from socket_address import SocketAddress
 
-def prepare_for_game(server_addr):
+
+def prepare_for_game(server_addr: SocketAddress):
     """Creates a game connection with the server
 
     Creates a TCP connection with the server,
@@ -21,6 +23,7 @@ def prepare_for_game(server_addr):
     _send_team_name(game_socket)
     return game_socket, _wait_for_game(game_socket)
 
+
 def _establish_game_connection(server_addr):
     """Creates a TCP connection with the server
     """
@@ -30,11 +33,13 @@ def _establish_game_connection(server_addr):
     game_socket.connect(server_addr.to_tuple())
     return game_socket
 
+
 def _send_team_name(game_socket):
     """Sends the team name
     """
     print("sending team name")
     game_socket.send(coder.encode_string(f"{config.TEAM_NAME}\n"))
+
 
 def _wait_for_game(game_socket):
     """Waits for the game to start
@@ -48,20 +53,21 @@ def _wait_for_game(game_socket):
         return None
     return coder.decode_string(message_bytes)
 
+
 if __name__ == "__main__":
-    import sys
-    import argparse
-    from socket_address import SocketAddress
+    def main():
+        import argparse
+        from socket_address import SocketAddress
 
-    def do_nothing():
-        pass
+        args_parser = argparse.ArgumentParser()
+        args_parser.add_argument("--host", default="127.0.0.1", required=False, dest="host")
+        args_parser.add_argument("-p, --port", default=12000, required=False, type=int, dest="port")
+        args = args_parser.parse_args()
+        try:
+            game_socket, msg = prepare_for_game(SocketAddress(args.host, args.port))
+            print(msg)
+        except KeyboardInterrupt:
+            pass
 
-    args_parser = argparse.ArgumentParser()
-    args_parser.add_argument("--host", default="127.0.0.1", required=False, dest="host")
-    args_parser.add_argument("-p, --port", default=12000, required=False, type=int, dest="port")
-    args = args_parser.parse_args()
-    try:
-        game_socket, msg = prepare_for_game(SocketAddress(args.host, args.port), do_nothing)
-        print(msg)
-    except KeyboardInterrupt:
-        pass
+
+    main()

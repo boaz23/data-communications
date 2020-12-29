@@ -4,21 +4,24 @@ Client running logic,
 run this if you would like to run the entire client
 """
 
-import socket
+import fcntl
+import os
 import selectors
-import termios, fcntl, sys, os
+import socket
+import sys
+import termios
 
-import config
 import coder
+import config
 import util
-
-from client_game_looker import look_for_game
 from client_game_connection import prepare_for_game
+from client_game_looker import look_for_game
 
-selector = None
-game_socket_selector_events = None
-has_stdin_been_registered = False
+selector: selectors.BaseSelector
+game_socket_selector_events: int
+has_stdin_been_registered: bool
 input_strings_buffer = []
+
 
 def main():
     """Entry function for the client
@@ -44,6 +47,7 @@ def main():
         termios.tcsetattr(sys.stdin, termios.TCSAFLUSH, oldterm)
         fcntl.fcntl(sys.stdin, fcntl.F_SETFL, oldflags)
 
+
 def main_logic_loop():
     """Game lookup and play loop
 
@@ -61,6 +65,7 @@ def main_logic_loop():
     finally:
         if selector is not None:
             selector.close()
+
 
 def main_logic_iter():
     """Game lookup and play, one time exactly
@@ -110,6 +115,7 @@ def main_logic_iter():
         if game_started:
             print("Server disconnected, listening for offer requests...")
 
+
 def register_io_for_select(game_socket):
     """Register IO files for selection
 
@@ -125,6 +131,7 @@ def register_io_for_select(game_socket):
     game_socket_selector_events = selectors.EVENT_READ
     selector.register(sys.stdin, selectors.EVENT_READ)
     has_stdin_been_registered = True
+
 
 def start_game(game_socket):
     """Plays the game
@@ -152,6 +159,7 @@ def start_game(game_socket):
             else:
                 raise Exception("impossible state, selection was not the game socket nor stdin")
 
+
 def send_pressed_keys(game_socket: socket.socket):
     """Send keys to the server
 
@@ -177,6 +185,7 @@ def send_pressed_keys(game_socket: socket.socket):
         game_socket_selector_events &= ~selectors.EVENT_WRITE
         selector.modify(game_socket, game_socket_selector_events)
 
+
 def print_data_from_server(game_socket: socket.socket):
     """Prints data from the server
 
@@ -191,13 +200,14 @@ def print_data_from_server(game_socket: socket.socket):
     print(message)
     return False
 
+
 def buffer_data_from_stdin(game_socket: socket.socket):
     """Saves input from the user
 
     Buffers input from the user to be used later in order to send it
     to the server when the socket is ready for write
     """
-    #TODO: check if .read() works
+    # TODO: check if .read() works
     global selector
     global game_socket_selector_events
     global input_strings_buffer

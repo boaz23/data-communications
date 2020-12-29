@@ -1,4 +1,4 @@
-"""Various configuraions of both the client and the server
+"""Various configurations of both the client and the server
 """
 
 import socket
@@ -43,7 +43,7 @@ GAME_OFFER_PROTOCOL = socket.SOCK_DGRAM
 GAME_OFFER_MSG_SIZE = 7
 # The size of the client's buffer when receiving game offer packets
 # (sent to 'recv' as a parameter)
-GAME_OFFER_RECV_BUFFER_SIZE = 1 << 4 #16
+GAME_OFFER_RECV_BUFFER_SIZE = 1 << 4  # 16
 
 MAGIC_COOKIE = 0xfeedbeef
 MAGIC_COOKIE_SIZE = INT_SIZE_32
@@ -61,7 +61,7 @@ GAME_OFFER_WAIT_TIME = 0.5
 #******************* Game Loigc *******************
 #**************************************************
 MAX_GROUPS_COUNT = 2
-GAME_DURAION = 10
+GAME_DURATION = 10
 
 #**************************************************
 #****************** General Stuff *****************
@@ -72,7 +72,7 @@ PORT_NUM_SIZE = INT_SIZE_16
 # The port which the server will accept game connections
 SERVER_GAME_PORT = 0
 # The default size for buffers when reading data from socket connections
-DEFAULT_RECV_BUFFER_SIZE = 1 << 11 #2048
+DEFAULT_RECV_BUFFER_SIZE = 1 << 11  # 2048
 
 # timeout for selects
 # needed because we do not want to be blocked in a select call forever

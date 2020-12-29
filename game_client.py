@@ -6,6 +6,7 @@ A class to store client related data in the server
 
 from socket_address import SocketAddress
 
+
 class GameClient:
     def __init__(self, accpected_client):
         self.socket = accpected_client[0]

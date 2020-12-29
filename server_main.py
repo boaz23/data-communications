@@ -151,7 +151,7 @@ def start_game():
     selector.unregister(game_server_socket)
     prep_clients_to_selector_pre_game()
     welcome_message = make_welcome_message()
-    util.run_and_wait_for_timed_task(game_do_select, config.GAME_DURAION, args=(welcome_message,),
+    util.run_and_wait_for_timed_task(game_do_select, config.GAME_DURATION, args=(welcome_message,),
                                      name='in-game select')
     print_winner()
 

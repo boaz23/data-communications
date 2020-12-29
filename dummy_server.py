@@ -1,11 +1,11 @@
-import socket
-import threading
-import sys
+import argparse
 import os
 import signal
-import argparse
+import socket
+import threading
 
 from socket_address import SocketAddress
+
 
 def main(accept_addr, should_close_client_socket_on_connection_close):
     print(f"dummy server started")
@@ -14,7 +14,7 @@ def main(accept_addr, should_close_client_socket_on_connection_close):
         server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         server_socket.bind(('127.0.0.1', 12000))
-        server_socket.listen()
+        server_socket.listen(1)
 
         recv_thread = None
         e_end_recv = None
@@ -29,7 +29,11 @@ def main(accept_addr, should_close_client_socket_on_connection_close):
                 print(f"accepted connection from {client_addr[0]}:{client_addr[1]}\n")
                 e_end_recv = threading.Event()
                 e_client_closed_conn = threading.Event()
-                recv_thread = threading.Thread(name="recv thread", target=recv_client_data, args=(e_end_recv, e_client_closed_conn, client_socket))
+                recv_thread = threading.Thread(
+                    name="recv thread",
+                    target=recv_client_data,
+                    args=(e_end_recv, e_client_closed_conn, client_socket)
+                )
                 recv_thread.start()
                 send_data_from_stdin(e_client_closed_conn, client_socket)
             except KeyboardInterrupt:
@@ -63,9 +67,11 @@ def main(accept_addr, should_close_client_socket_on_connection_close):
             server_socket.shutdown(socket.SHUT_RDWR)
             server_socket.close()
 
+
 def send_data_from_stdin(e_client_closed_conn, client_socket):
     while not e_client_closed_conn.is_set():
         client_socket.send(input().encode())
+
 
 def recv_client_data(e_end_recv, e_client_closed_conn, client_socket):
     while not e_end_recv.is_set():
@@ -79,8 +85,12 @@ def recv_client_data(e_end_recv, e_client_closed_conn, client_socket):
         except socket.timeout:
             pass
 
+
 if __name__ == "__main__":
-    args_parser = argparse.ArgumentParser("dummy server", description="A server which accpets a single client, prints every message it receive and allows sending message from the input to the client")
+    args_parser = argparse.ArgumentParser("dummy server",
+                                          description="A server which accpets a single client, prints every message "
+                                                      "it receive and allows sending message from the input to the "
+                                                      "client")
     args_parser.add_argument("--host", default="127.0.0.1", required=False, dest="host")
     args_parser.add_argument("-p, --port", default=12000, required=False, type=int, dest="port")
     args_parser.add_argument("-c", required=False, action='store_const', const=True, default=False, dest="c")
