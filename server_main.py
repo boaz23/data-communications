@@ -25,6 +25,7 @@ send_game_offer_event: threading.Event
 in_game_select_event = threading.Event
 
 groups = []
+num_clients: int
 
 
 def main():
@@ -117,6 +118,8 @@ def new_game():
 
 def init_game_vars():
     global groups
+    global num_clients
+    num_clients = 0
     groups = []
     for i in range(config.MAX_GROUPS_COUNT):
         groups.append(Group(i + 1))
@@ -242,9 +245,7 @@ def game_started_read_client_data(client):
 
 def game_started_send_data_to_client(client, welcome_message):
     if not client.sent_welcome_message:
-        try:
-            send_welcome_message(client, welcome_message)
-        except OSError:
+        if not send_welcome_message(client, welcome_message):
             return
         client.sent_welcome_message = True
         register_client_to_selector(client, selectors.EVENT_READ)
@@ -253,7 +254,10 @@ def game_started_send_data_to_client(client, welcome_message):
 def print_winner():
     global groups
     winner_groups = find_winner_groups(groups)
-    print(make_game_over_message(winner_groups))
+    game_over_message = make_game_over_message(winner_groups)
+    register_clients_to_selector_write()
+    print(game_over_message)
+    send_game_over_message_to_clients(game_over_message)
 
 
 def find_winner_groups(groups):
@@ -291,7 +295,33 @@ def make_game_over_message(winner_groups):
 
 
 def send_welcome_message(client, welcome_message):
-    client.socket.send(coder.encode_string(welcome_message))
+    try:
+        client.socket.send(coder.encode_string(welcome_message))
+        return True
+    except OSError:
+        return False
+
+
+def register_clients_to_selector_write():
+    global groups
+    for group in groups:
+        for client in group.connected_clients.values():
+            register_client_to_selector(client, selectors.EVENT_WRITE)
+
+
+def send_game_over_message_to_clients(game_over_message):
+    global groups
+    global num_clients
+    send_remaining = num_clients
+    while send_remaining > 0:
+        for (selection_key, events) in selector.select():
+            client = selection_key.data
+            try:
+                client.socket.send(coder.encode_string(game_over_message))
+            except OSError:
+                # ignore
+                pass
+            send_remaining -= 1
 
 
 def in_game_client_read(client, message_bytes):
@@ -343,6 +373,7 @@ def send_game_offer():
 def accept_client(selection_key):
     global game_server_socket
     global selector
+    global num_clients
     try:
         client_socket = game_server_socket.accept()
     except OSError:
@@ -351,6 +382,7 @@ def accept_client(selection_key):
     client = GameClient(client_socket)
     client.socket.setblocking(False)
     register_client_to_selector(client, selectors.EVENT_READ)
+    num_clients += 1
 
 
 def game_intermission_client_read(selection_key):
@@ -404,6 +436,7 @@ def remove_client(client):
 
 
 def disconnect_client(client):
+    global num_clients
     if not client.is_connected:
         return
     if client.is_registered_in_selector():
@@ -411,6 +444,7 @@ def disconnect_client(client):
     try:
         client.socket.close()
         client.is_connected = False
+        num_clients -= 1
     except OSError:
         # what go wrong anyway? KEKW
         # ignore

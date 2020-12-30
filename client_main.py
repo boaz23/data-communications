@@ -205,7 +205,7 @@ def print_data_from_server(game_socket: socket.socket):
     except OSError:
         return True
     message = coder.decode_string(message_bytes)
-    print(message)
+    print("\n" + message)
     return False
 
 
