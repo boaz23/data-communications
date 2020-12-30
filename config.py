@@ -58,7 +58,7 @@ MSG_TYPE_OFFER_SIZES = [INT_SIZE_8, INT_SIZE_16]
 GAME_OFFER_SENDING_DURATION = 10
 # The amount of time the server waits between sending two consecutive
 # game offers packets
-GAME_OFFER_WAIT_TIME = 0.5
+GAME_OFFER_WAIT_TIME = 0.495
 
 #**************************************************
 #******************* Game Loigc *******************
