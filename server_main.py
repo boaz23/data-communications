@@ -27,6 +27,8 @@ in_game_select_event = threading.Event
 
 groups = []
 num_clients: int
+pressed_keys_count = {}
+most_pressed_key = None
 
 
 def main():
@@ -116,7 +118,11 @@ def new_game():
 def init_game_vars():
     global groups
     global num_clients
+    global pressed_keys_count
+    global most_pressed_key
     num_clients = 0
+    pressed_keys_count = {}
+    most_pressed_key = ('', 0)
     groups = []
     for i in range(config.MAX_GROUPS_COUNT):
         groups.append(Group(i + 1))
@@ -271,10 +277,16 @@ def find_winner_groups(groups):
 
 
 def make_game_over_message(winner_groups):
-    global groups
-
     s = ""
     s += "Game over!\n"
+    s += make_final_groups_score_message(winner_groups)
+    s += make_statistics_message()
+    return s
+
+
+def make_final_groups_score_message(winner_groups):
+    global groups
+    s = ""
     s += " ".join(map(lambda group: f"{group} typed in {group.pressed_keys_counter} characters.", groups))
     if len(winner_groups) == 1:
         # no ties
@@ -288,6 +300,25 @@ def make_game_over_message(winner_groups):
         s += f" and {winner_groups[-1]}\n\n"
         s += "Tied groups:\n\n"
         s += get_groups_team_names_with_title_formatted_string(winner_groups)
+    return s
+
+
+def make_statistics_message():
+    global most_pressed_key
+
+    s = "\n"
+    s += "Statistics\n"
+    s += "==\n"
+    s += f"Most typed character: '{util.char_to_string(most_pressed_key[0])}'\n"
+    times_pressed = most_pressed_key[1]
+    if times_pressed < 10:
+        s += f"It was typed only {times_pressed} times\n"
+        s += "Wow, you guys are weak"
+    elif times_pressed < 30:
+        s += f"It was typed {times_pressed} times"
+    else:
+        s += f"It was typed {times_pressed} times!"
+    s += "\n"
     return s
 
 
@@ -322,7 +353,17 @@ def send_game_over_message_to_clients(game_over_message):
 
 
 def in_game_client_read(client, message_bytes):
+    global pressed_keys_count
+    global most_pressed_key
     message = coder.decode_string(message_bytes)
+    for c in message:
+        if c in pressed_keys_count:
+            count = pressed_keys_count[c] + 1
+        else:
+            count = 1
+        pressed_keys_count[c] = count
+        if most_pressed_key[1] < count:
+            most_pressed_key = (c, count)
     client.group.pressed_keys_counter += len(message)
 
 

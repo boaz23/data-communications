@@ -30,3 +30,14 @@ def wait_retry_sleep():
 
 def bytes_to_string(bytes):
     return bytes.hex(' ', 1).upper()
+
+
+def is_printable_char(c):
+    return ord(c) >= 0x20 and c != 0xFF
+
+
+def char_to_string(c):
+    if is_printable_char(c):
+        return c
+    else:
+        return hex(ord(c)).upper()
