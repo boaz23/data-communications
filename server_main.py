@@ -220,7 +220,7 @@ def game_do_select(e, welcome_message):
 
 def is_in_game():
     global in_game_select_event
-    return not in_game_select_event.is_set()
+    return in_game_select_event is not None and not in_game_select_event.is_set()
 
 
 def game_started_read_client_data(client):
@@ -351,6 +351,7 @@ def send_game_offers_loop(e):
 
 
 def send_game_offer():
+    print(f"sending game offers")
     for byte_order in config.INTEGER_BYTE_ORDERS:
         for msg_type_size in config.MSG_TYPE_OFFER_SIZES:
             send_game_offer_core(byte_order, msg_type_size)
@@ -361,7 +362,6 @@ def send_game_offer_core(byte_order, msg_type_size):
     global game_server_socket_addr
     global game_offer_send_addr
 
-    print(f"sending game offers")
     message_bytes = bytearray()
     message_bytes += coder.encode_int(config.MAGIC_COOKIE, config.MAGIC_COOKIE_SIZE, byte_order)
     message_bytes += coder.encode_int(config.MSG_TYPE_OFFER, msg_type_size, byte_order)
