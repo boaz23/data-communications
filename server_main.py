@@ -37,9 +37,6 @@ def main():
     init_game_server_socket()
     game_server_socket.listen()
 
-    # TODO: remove this line
-    # config.SERVER_OFFER_SENDING_DURATION = 5
-
     try:
         print(f"Server started, listening on IP address {network.my_addr()}")
         main_loop()

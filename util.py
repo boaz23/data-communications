@@ -26,3 +26,7 @@ def run_and_wait_for_timed_task(task, duration, args=(), name=None):
 
 def wait_retry_sleep():
     time.sleep(config.RETRY_WAIT_TIME)
+
+
+def bytes_to_string(bytes):
+    return bytes.hex(' ', 1).upper()

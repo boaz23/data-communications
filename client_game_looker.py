@@ -78,21 +78,22 @@ def _recv_game_offer(game_offer_socket):
     print(f"received data from {server_addr}")
     port = _decode_message(message_bytes)
     if port is None:
+        print(f"offer data: {util.bytes_to_string(message_bytes)}")
         return None
     return SocketAddress(server_addr.host, port)
 
 
 def _decode_message(message_bytes):
     if len(message_bytes) != config.GAME_OFFER_MSG_SIZE:
-        util.print_err("invalid game offer: length")
+        util.print_err(f"invalid game offer: length {len(message_bytes)}")
         return None
     magic_coockie = coder.decode_int(message_bytes[0:4])
     if magic_coockie != config.MAGIC_COOKIE:
-        util.print_err("invalid game offer: cookie")
+        util.print_err(f"invalid game offer: cookie {hex(magic_coockie).upper()}")
         return None
     msg_type = coder.decode_int(message_bytes[4:5])
     if msg_type != config.MSG_TYPE_OFFER:
-        util.print_err("invalid game offer: message type")
+        util.print_err(f"invalid game offer: message type {hex(msg_type).capitalize()}")
         return None
     port = coder.decode_int(message_bytes[5:7])
     return port
