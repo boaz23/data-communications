@@ -11,6 +11,7 @@ import util
 from socket_address import SocketAddress
 from game_client import GameClient
 from group import Group
+from terminal_colors import *
 
 game_server_socket_addr = SocketAddress(network.my_addr(), config.SERVER_GAME_PORT)
 game_offer_send_addr = SocketAddress(network.broadcast_addr(), config.GAME_OFFER_PORT)
@@ -38,7 +39,7 @@ def main():
     game_server_socket.listen()
 
     try:
-        print(f"Server started, listening on IP address {network.my_addr()}")
+        print_color(TC_FG_BRIGHT_GREEN, f"Server started, listening on IP address {network.my_addr()}")
         main_loop()
     except KeyboardInterrupt:
         print("")
@@ -76,13 +77,13 @@ def main_loop():
         try:
             selector.register(game_server_socket, selectors.EVENT_READ)
 
-            print("preparing for new game")
+            print_color(TC_FG_BRIGHT_GREEN, "preparing for new game")
             new_game()
             game_started = True
         finally:
             disconnect_all_clients()
             if game_started:
-                print('Game over, sending out offer requests...')
+                print_color(TC_FG_BRIGHT_MAGENTA, 'Game over, sending out offer requests...')
 
 
 def disconnect_all_clients():
@@ -100,7 +101,6 @@ def init_game_server_socket():
     game_server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     game_server_socket.bind(game_server_socket_addr.to_tuple())
     game_server_socket_addr = SocketAddress(game_server_socket.getsockname())
-    print(game_server_socket_addr)
     game_server_socket.setblocking(False)
     game_server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 
@@ -109,7 +109,7 @@ def new_game():
     init_game_vars()
     invite_clients()
     handle_game_accepts()
-    print('starting a new game')
+    print_color(TC_FG_BRIGHT_CYAN, 'starting a new game')
     start_game()
 
 
@@ -253,7 +253,7 @@ def print_winner():
     winner_groups = find_winner_groups(groups)
     game_over_message = make_game_over_message(winner_groups)
     register_clients_to_selector_write()
-    print(game_over_message)
+    print_color(TC_FG_MAGENTA, game_over_message)
     send_game_over_message_to_clients(game_over_message)
 
 
@@ -344,14 +344,14 @@ def send_game_offers_loop(e):
     global send_game_offer_event
 
     send_game_offer_event = e
-    print(f"broadcasting game offer to {game_offer_send_addr}")
+    print_color(TC_FG_BRIGHT_BLUE, f"broadcasting game offer to {game_offer_send_addr}")
     while not e.is_set():
         send_game_offer()
         e.wait(config.GAME_OFFER_WAIT_TIME)
 
 
 def send_game_offer():
-    print(f"sending game offers")
+    print_color(TC_FG_BRIGHT_BLUE, f"sending game offers")
     for byte_order in config.INTEGER_BYTE_ORDERS:
         for msg_type_size in config.MSG_TYPE_OFFER_SIZES:
             send_game_offer_core(byte_order, msg_type_size)
@@ -413,7 +413,7 @@ def game_intermissions_admit_to_game_lobby(client: GameClient):
         team_name = read_team_name_from_bytes(message_bytes)
         client.team_name = team_name
         if team_name is not None:
-            print(f"team '{team_name}' connected")
+            print_color(TC_FG_BRIGHT_YELLOW, f"team '{team_name}' connected")
             assign_client_to_group(client)
 
     return False

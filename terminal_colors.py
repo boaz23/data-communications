@@ -1,3 +1,6 @@
+def print_color(color, *args, **kwargs):
+    print(color, *args, TC_FG_ENDC, **kwargs)
+
 TC_FG_BRIGHT_RED     = '\033[91m'
 TC_FG_BRIGHT_GREEN   = '\033[92m'
 TC_FG_BRIGHT_YELLOW  = '\033[93m'
