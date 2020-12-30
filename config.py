@@ -20,7 +20,7 @@ IF_TEST = network.NetIf('eth2', '172.99.255.255')
 # The active network interface that will actually be used
 # by the client and the server to create sockets and connect to the
 # network
-active_network_interface = IF_LOCALHOST
+active_network_interface = IF_DEV
 
 #**************************************************
 #******************** Encodings *******************
@@ -61,7 +61,7 @@ GAME_OFFER_SENDING_DURATION = 10
 GAME_OFFER_WAIT_TIME = 0.495
 
 #**************************************************
-#******************* Game Loigc *******************
+#******************* Game Logic *******************
 #**************************************************
 MAX_GROUPS_COUNT = 2
 GAME_DURATION = 10
