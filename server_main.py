@@ -307,6 +307,7 @@ def make_final_groups_score_message(winner_groups):
 
 
 def make_statistics_message():
+    global groups
     global most_pressed_key
     global best_basher
 
@@ -314,7 +315,9 @@ def make_statistics_message():
     s += "Statistics\n"
     s += "==\n"
     times_pressed = most_pressed_key[1]
-    if times_pressed == 0:
+    if sum(len(group.connected_clients) for group in groups) == 0:
+        s += "No team participated"
+    elif times_pressed == 0:
         s += "No one typed anything, congrats, you trolls..."
     else:
         best_basher_client = best_basher[0]
@@ -493,8 +496,10 @@ def unregister_client_from_selector(client):
 
 def remove_client(client):
     disconnect_client(client)
-    if client.group is not None and not is_in_game():
+    if not is_in_game() and client.group is not None:
         del client.group.connected_clients[client.addr]
+    if client.team_name is not None:
+        print_color(TC_FG_BRIGHT_YELLOW, f"team '{client.team_name}' disconnected")
 
 
 def disconnect_client(client):
