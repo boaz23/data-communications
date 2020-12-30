@@ -349,22 +349,22 @@ def register_clients_to_selector_write():
     global groups
     for group in groups:
         for client in group.connected_clients.values():
-            register_client_to_selector(client, selectors.EVENT_WRITE)
+            try:
+                register_client_to_selector(client, selectors.EVENT_WRITE)
+            except:
+                pass
 
 
 def send_game_over_message_to_clients(game_over_message):
     global groups
-    global num_clients
-    send_remaining = num_clients
-    while send_remaining > 0:
-        for (selection_key, events) in selector.select():
-            client = selection_key.data
-            try:
-                client.socket.send(coder.encode_string(game_over_message))
-            except OSError:
-                # ignore
-                pass
-            send_remaining -= 1
+    for group in groups:
+        for client in group.connected_clients.values():
+            if client.is_connected:
+                try:
+                    client.socket.send(coder.encode_string(game_over_message))
+                except OSError:
+                    # ignore
+                    pass
 
 
 def in_game_client_read(client, message_bytes):
