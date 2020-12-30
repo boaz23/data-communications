@@ -29,6 +29,7 @@ groups = []
 num_clients: int
 pressed_keys_count = {}
 most_pressed_key = None
+best_basher = None
 
 
 def main():
@@ -120,10 +121,12 @@ def init_game_vars():
     global num_clients
     global pressed_keys_count
     global most_pressed_key
+    global best_basher
     num_clients = 0
     pressed_keys_count = {}
     most_pressed_key = ('', 0)
     groups = []
+    best_basher = (None, 0)
     for i in range(config.MAX_GROUPS_COUNT):
         groups.append(Group(i + 1))
 
@@ -305,6 +308,7 @@ def make_final_groups_score_message(winner_groups):
 
 def make_statistics_message():
     global most_pressed_key
+    global best_basher
 
     s = "\n"
     s += "Statistics\n"
@@ -313,6 +317,11 @@ def make_statistics_message():
     if times_pressed == 0:
         s += "No one typed anything, congrats, you trolls..."
     else:
+        best_basher_client = best_basher[0]
+        s += f"The MVP for this game is '{best_basher_client.team_name}'\n"
+        s += f"They typed {best_basher_client.keys_pressed_amount} characters\n"
+
+        s += "\n"
         s += f"Most typed character: '{util.char_to_string(most_pressed_key[0])}'\n"
         if times_pressed < 10:
             s += f"It was typed only {times_pressed} times\n"
@@ -358,7 +367,9 @@ def send_game_over_message_to_clients(game_over_message):
 def in_game_client_read(client, message_bytes):
     global pressed_keys_count
     global most_pressed_key
+    global best_basher
     message = coder.decode_string(message_bytes)
+    message_len = len(message)
     for c in message:
         if c in pressed_keys_count:
             count = pressed_keys_count[c] + 1
@@ -367,7 +378,11 @@ def in_game_client_read(client, message_bytes):
         pressed_keys_count[c] = count
         if most_pressed_key[1] < count:
             most_pressed_key = (c, count)
-    client.group.pressed_keys_counter += len(message)
+
+    client.keys_pressed_amount += message_len
+    client.group.pressed_keys_counter += message_len
+    if best_basher[1] < client.keys_pressed_amount:
+        best_basher = (client, client.keys_pressed_amount)
 
 
 def invite_clients_target():

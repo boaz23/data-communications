@@ -16,6 +16,7 @@ class GameClient:
         self.sent_welcome_message = False
         self.selector_events = None
         self.is_connected = True
+        self.keys_pressed_amount = 0
 
     def is_registered_in_selector(self):
         return self.selector_events is not None
