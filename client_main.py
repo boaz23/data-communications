@@ -27,7 +27,8 @@ def main():
     """Entry function for the client
     """
     # see the code from https://docs.python.org/2/faq/library.html#how-do-i-get-a-single-keypress-at-a-time
-    #  Allows us to read one key at a time from stdin instead of
+
+    # Allows us to read one key at a time from stdin instead of
     # waiting for a newline (\n)
     oldterm = termios.tcgetattr(sys.stdin)
     newattr = termios.tcgetattr(sys.stdin)
