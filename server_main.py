@@ -309,15 +309,18 @@ def make_statistics_message():
     s = "\n"
     s += "Statistics\n"
     s += "==\n"
-    s += f"Most typed character: '{util.char_to_string(most_pressed_key[0])}'\n"
     times_pressed = most_pressed_key[1]
-    if times_pressed < 10:
-        s += f"It was typed only {times_pressed} times\n"
-        s += "Wow, you guys are weak"
-    elif times_pressed < 30:
-        s += f"It was typed {times_pressed} times"
+    if times_pressed == 0:
+        s += "No one typed anything, congrats, you trolls..."
     else:
-        s += f"It was typed {times_pressed} times!"
+        s += f"Most typed character: '{util.char_to_string(most_pressed_key[0])}'\n"
+        if times_pressed < 10:
+            s += f"It was typed only {times_pressed} times\n"
+            s += "Wow, you guys are weak"
+        elif times_pressed < 30:
+            s += f"It was typed {times_pressed} times"
+        else:
+            s += f"It was typed {times_pressed} times!"
     s += "\n"
     return s
 
