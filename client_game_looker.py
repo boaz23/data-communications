@@ -78,24 +78,39 @@ def _recv_game_offer(game_offer_socket):
     print(f"received data from {server_addr}")
     port = _decode_message(message_bytes)
     if port is None:
-        print(f"offer data: {util.bytes_to_string(message_bytes)}")
+        print(f"invalid game offer: {util.bytes_to_string(message_bytes)}")
         return None
+    print("")
     return SocketAddress(server_addr.host, port)
 
 
 def _decode_message(message_bytes):
-    if len(message_bytes) != config.GAME_OFFER_MSG_SIZE:
-        util.print_err(f"invalid game offer: length {len(message_bytes)}")
+    for byte_order in config.INTEGER_BYTE_ORDERS:
+        port = _decode_message_byte_order(message_bytes, byte_order)
+        if port is not None:
+            break
+    return port
+
+
+def _decode_message_byte_order(message_bytes, byte_order):
+    for msg_type_size in config.MSG_TYPE_OFFER_SIZES:
+        port = _decode_message_core(message_bytes, byte_order, msg_type_size)
+        if port is not None:
+            break
+    return port
+
+
+def _decode_message_core(message_bytes, byte_order, msg_type_size):
+    expected_len = config.MAGIC_COOKIE_SIZE + msg_type_size + config.PORT_NUM_SIZE
+    if len(message_bytes) != expected_len:
         return None
-    magic_coockie = coder.decode_int(message_bytes[0:4])
+    magic_coockie = coder.decode_int(message_bytes, config.MAGIC_COOKIE_OFFSET, config.MAGIC_COOKIE_SIZE, byte_order)
     if magic_coockie != config.MAGIC_COOKIE:
-        util.print_err(f"invalid game offer: cookie {hex(magic_coockie).upper()}")
         return None
-    msg_type = coder.decode_int(message_bytes[4:5])
+    msg_type = coder.decode_int(message_bytes, config.MSG_TYPE_OFFSET, msg_type_size, byte_order)
     if msg_type != config.MSG_TYPE_OFFER:
-        util.print_err(f"invalid game offer: message type {hex(msg_type).capitalize()}")
         return None
-    port = coder.decode_int(message_bytes[5:7])
+    port = coder.decode_int(message_bytes, config.MSG_TYPE_OFFSET + msg_type_size, config.PORT_NUM_SIZE, byte_order)
     return port
 
 

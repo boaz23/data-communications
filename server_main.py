@@ -346,11 +346,7 @@ def send_game_offers_loop(e):
     send_game_offer_event = e
     print(f"broadcasting game offer to {game_offer_send_addr}")
     while not e.is_set():
-        try:
-            send_game_offer()
-        except OSError:
-            # just ignore send errors of offer requests
-            pass
+        send_game_offer()
         e.wait(config.GAME_OFFER_WAIT_TIME)
 
 
@@ -361,10 +357,14 @@ def send_game_offer():
 
     print(f"sending game offers")
     message_bytes = bytearray()
-    message_bytes += coder.encode_int(config.MAGIC_COOKIE, config.MAGIC_COOKIE_SIZE)
-    message_bytes += coder.encode_int(config.MSG_TYPE_OFFER, config.MSG_TYPE_OFFER_SIZE)
-    message_bytes += coder.encode_int(game_server_socket_addr.port, config.PORT_NUM_SIZE)
-    invite_socket.sendto(message_bytes, game_offer_send_addr.to_tuple())
+    message_bytes += coder.encode_int(config.MAGIC_COOKIE, config.MAGIC_COOKIE_SIZE, 'big')
+    message_bytes += coder.encode_int(config.MSG_TYPE_OFFER, config.INT_SIZE_8, 'big')
+    message_bytes += coder.encode_int(game_server_socket_addr.port, config.PORT_NUM_SIZE, 'big')
+    try:
+        invite_socket.sendto(message_bytes, game_offer_send_addr.to_tuple())
+    except OSError:
+        # just ignore send errors of offer requests
+        pass
 
 
 def accept_client(selection_key):
