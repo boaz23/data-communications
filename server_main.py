@@ -351,15 +351,21 @@ def send_game_offers_loop(e):
 
 
 def send_game_offer():
+    for byte_order in config.INTEGER_BYTE_ORDERS:
+        for msg_type_size in config.MSG_TYPE_OFFER_SIZES:
+            send_game_offer_core(byte_order, msg_type_size)
+
+
+def send_game_offer_core(byte_order, msg_type_size):
     global invite_socket
     global game_server_socket_addr
     global game_offer_send_addr
 
     print(f"sending game offers")
     message_bytes = bytearray()
-    message_bytes += coder.encode_int(config.MAGIC_COOKIE, config.MAGIC_COOKIE_SIZE, 'big')
-    message_bytes += coder.encode_int(config.MSG_TYPE_OFFER, config.INT_SIZE_8, 'big')
-    message_bytes += coder.encode_int(game_server_socket_addr.port, config.PORT_NUM_SIZE, 'big')
+    message_bytes += coder.encode_int(config.MAGIC_COOKIE, config.MAGIC_COOKIE_SIZE, byte_order)
+    message_bytes += coder.encode_int(config.MSG_TYPE_OFFER, msg_type_size, byte_order)
+    message_bytes += coder.encode_int(game_server_socket_addr.port, config.PORT_NUM_SIZE, byte_order)
     try:
         invite_socket.sendto(message_bytes, game_offer_send_addr.to_tuple())
     except OSError:
