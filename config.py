@@ -27,7 +27,7 @@ active_network_interface = IF_LOCALHOST
 #**************************************************
 # Controls how to encode and decode various data
 STRING_ENCODING = 'utf-8'
-INTEGER_ENDIANNESS = 'little'
+INTEGER_ENDIANNESS = 'big'
 
 # Sizes of integer fields of structs in bytes
 INT_SIZE_8 = 1
