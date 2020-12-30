@@ -261,7 +261,7 @@ def print_winner():
     global groups
     winner_groups = find_winner_groups(groups)
     game_over_message = make_game_over_message(winner_groups)
-    register_clients_to_selector_write()
+    #register_clients_to_selector_write()
     print_color(TC_FG_MAGENTA, game_over_message)
     send_game_over_message_to_clients(game_over_message)
 
@@ -491,7 +491,8 @@ def register_client_to_selector(client, events):
 
 def unregister_client_from_selector(client):
     global selector
-    client.unregister_from_selector(selector)
+    if client.is_registered_in_selector():
+        client.unregister_from_selector(selector)
 
 
 def remove_client(client):
