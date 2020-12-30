@@ -446,6 +446,7 @@ def accept_client(selection_key):
     client.socket.setblocking(False)
     register_client_to_selector(client, selectors.EVENT_READ)
     num_clients += 1
+    print_color(TC_FG_BRIGHT_YELLOW, f"client {client.addr} accepted")
 
 
 def game_intermission_client_read(selection_key):
@@ -527,7 +528,7 @@ def assign_client_to_group(client):
 
 def read_team_name_from_bytes(message_bytes):
     message_string = coder.decode_string(message_bytes)
-    regex_match = re.match(r'^(\w+)\n$', message_string)
+    regex_match = re.match(r'^(.+?)\n$', message_string)
     if not regex_match:
         return None
     return regex_match.group(1)
