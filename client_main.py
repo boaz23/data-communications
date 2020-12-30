@@ -61,7 +61,7 @@ def main_logic_loop():
     try:
         selector = selectors.DefaultSelector()
         while True:
-            #set_terminal_echo(False)
+            set_terminal_echo(False)
             main_logic_iter()
     finally:
         if selector is not None:
@@ -97,6 +97,10 @@ def main_logic_iter():
             print("error connecting to the server, looking for game offers...")
             return
 
+        # clears the stdin from input so what the user
+        # typed before the game won't be sent
+        termios.tcflush(sys.stdin, termios.TCIOFLUSH)
+        set_terminal_echo(True)
         register_io_for_select(game_socket)
         print(welcome_msg)
         start_game(game_socket)
@@ -141,10 +145,6 @@ def start_game(game_socket):
     """
     global selector
 
-    # clears the stdin from input so what the user
-    # typed before the game won't be sent
-    termios.tcflush(sys.stdin, termios.TCIOFLUSH)
-    #set_terminal_echo(True)
     while True:
         for (selection_key, events) in selector.select():
             if selection_key.fileobj is sys.stdin:
@@ -215,7 +215,6 @@ def buffer_data_from_stdin(game_socket: socket.socket):
     Buffers input from the user to be used later in order to send it
     to the server when the socket is ready for write
     """
-    # TODO: check if .read() works
     global selector
     global game_socket_selector_events
     global input_strings_buffer
