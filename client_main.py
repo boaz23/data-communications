@@ -16,11 +16,13 @@ import config
 import util
 from client_game_connection import prepare_for_game
 from client_game_looker import look_for_game
+from terminal_colors import *
 
 selector: selectors.BaseSelector
 game_socket_selector_events: int
 has_stdin_been_registered: bool
 input_strings_buffer = []
+game_over: bool
 
 
 def main():
@@ -57,7 +59,7 @@ def main_logic_loop():
     """
     global selector
 
-    print("Client started, listening for offer requests...")
+    print(f"{TC_FG_BRIGHT_GREEN}Client started, listening for offer requests...{TC_FG_ENDC}")
     selector = None
     try:
         selector = selectors.DefaultSelector()
@@ -79,9 +81,11 @@ def main_logic_iter():
     global game_socket_selector_events
     global has_stdin_been_registered
     global input_strings_buffer
+    global game_over
 
     game_socket = None
     game_started = False
+    game_over = False
     try:
         input_strings_buffer = []
         game_socket_selector_events = None
@@ -90,12 +94,12 @@ def main_logic_iter():
         try:
             game_socket, welcome_msg = prepare_for_game(game_server_addr)
             if welcome_msg is None:
-                print("Server disconnected, listening for offer requests...")
+                print(f"{TC_FG_BRIGHT_RED}Server disconnected, listening for offer requests...{TC_FG_ENDC}")
                 return
         except OSError:
             # error while connection/sending team name,
             # just look for another server
-            print("error connecting to the server, looking for game offers...")
+            print(f"{TC_FG_BRIGHT_RED}error connecting to the server, looking for game offers...{TC_FG_ENDC}")
             return
 
         # clears the stdin from input so what the user
@@ -103,7 +107,7 @@ def main_logic_iter():
         termios.tcflush(sys.stdin, termios.TCIOFLUSH)
         set_terminal_echo(True)
         register_io_for_select(game_socket)
-        print(welcome_msg)
+        print(f"{TC_FG_BRIGHT_CYAN}{welcome_msg}{TC_FG_ENDC}")
         start_game(game_socket)
         game_started = True
     finally:
@@ -119,7 +123,7 @@ def main_logic_iter():
                 # shouldn't be a problem to ignore
                 pass
         if game_started:
-            print("Server disconnected, listening for offer requests...")
+            print(f"{TC_FG_BRIGHT_MAGENTA}Server disconnected, listening for offer requests...{TC_FG_ENDC}")
 
 
 def register_io_for_select(game_socket):
@@ -198,6 +202,8 @@ def print_data_from_server(game_socket: socket.socket):
     Receives data from the server and prints it.
     Returns whether the server closed the game.
     """
+    global game_over
+
     try:
         message_bytes = game_socket.recv(config.DEFAULT_RECV_BUFFER_SIZE)
         if len(message_bytes) == 0:
@@ -206,7 +212,14 @@ def print_data_from_server(game_socket: socket.socket):
     except OSError:
         return True
     message = coder.decode_string(message_bytes)
-    print("\n" + message)
+    if message.lower().find("game over") >= 0:
+        # game over
+        game_over = True
+    if game_over:
+        print(f"\n{TC_FG_MAGENTA}{message}{TC_FG_ENDC}")
+    else:
+        # in-game messages
+        print(f"\n{TC_FG_BRIGHT_YELLOW}{message}{TC_FG_ENDC}")
     return False
 
 

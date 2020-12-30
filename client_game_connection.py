@@ -10,6 +10,7 @@ import socket
 import coder
 import config
 from socket_address import SocketAddress
+from terminal_colors import *
 
 
 def prepare_for_game(server_addr: SocketAddress):
@@ -27,8 +28,8 @@ def prepare_for_game(server_addr: SocketAddress):
 def _establish_game_connection(server_addr):
     """Creates a TCP connection with the server
     """
-    print(f"Received offer from {server_addr.host}, attempting to connect...")
-    print(f"port {server_addr.port}")
+    print(f"{TC_FG_BRIGHT_BLUE}Received offer from {server_addr.host}, attempting to connect...")
+    print(f"port {server_addr.port}{TC_FG_ENDC}")
     game_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     game_socket.connect(server_addr.to_tuple())
     return game_socket
@@ -37,7 +38,7 @@ def _establish_game_connection(server_addr):
 def _send_team_name(game_socket):
     """Sends the team name
     """
-    print("sending team name")
+    print(f"{TC_FG_BRIGHT_BLUE}sending team name{TC_FG_ENDC}")
     game_socket.send(coder.encode_string(f"{config.TEAM_NAME}\n"))
 
 
@@ -46,7 +47,7 @@ def _wait_for_game(game_socket):
 
     Returns the welcome message from the server.
     """
-    print("waiting for game...")
+    print(f"{TC_FG_BRIGHT_BLUE}waiting for game...{TC_FG_ENDC}")
     message_bytes = game_socket.recv(config.DEFAULT_RECV_BUFFER_SIZE)
     if len(message_bytes) == 0:
         # server disconnected

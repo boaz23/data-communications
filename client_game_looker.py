@@ -15,6 +15,7 @@ import network
 import coder
 import util
 from socket_address import SocketAddress
+from terminal_colors import *
 
 # This is the address which we will listen for packets
 _game_offer_recv_addr = SocketAddress(network.broadcast_addr(), config.GAME_OFFER_PORT)
@@ -27,7 +28,7 @@ def look_for_game():
     returns the server with the port.
     """
 
-    print(f"waiting for game offer, listening on {_game_offer_recv_addr}")
+    print(f"{TC_FG_BRIGHT_GREEN}waiting for game offer, listening on {_game_offer_recv_addr}{TC_FG_ENDC}")
     game_offer_socket = None
     try:
         game_offer_socket = _init_game_offer_socket()
@@ -71,14 +72,14 @@ def _recv_game_offer(game_offer_socket):
     except OSError:
         # Error while reading from the socket, nothing to do really,
         # just keep listening for more offers
-        print("error receiving game offer, continue to look for game offers...")
+        print(f"{TC_FG_BRIGHT_RED}error receiving game offer, continue to look for game offers...{TC_FG_ENDC}")
         return None
 
     server_addr = SocketAddress(server_addr)
-    print(f"received data from {server_addr}")
+    print(f"{TC_FG_BRIGHT_GREEN}received data from {server_addr}{TC_FG_ENDC}")
     port = _decode_message(message_bytes)
     if port is None:
-        print(f"invalid game offer: {util.bytes_to_string(message_bytes)}")
+        print(f"{TC_FG_BRIGHT_RED}invalid game offer: {util.bytes_to_string(message_bytes)}{TC_FG_ENDC}")
         return None
     print("")
     return SocketAddress(server_addr.host, port)
