@@ -414,9 +414,7 @@ def send_game_offers_loop(e):
 
 def send_game_offer():
     print_color(TC_FG_BRIGHT_BLUE, f"sending game offers")
-    for byte_order in config.INTEGER_BYTE_ORDERS:
-        for msg_type_size in config.MSG_TYPE_OFFER_SIZES:
-            send_game_offer_core(byte_order, msg_type_size)
+    return send_game_offer_core(config.BYTE_ORDER, config.MSG_TYPE_SIZE)
 
 
 def send_game_offer_core(byte_order, msg_type_size):

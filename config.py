@@ -27,8 +27,7 @@ active_network_interface = IF_DEV
 #**************************************************
 # Controls how to encode and decode various data
 STRING_ENCODING = 'utf-8'
-# account for possible different byte orders
-INTEGER_BYTE_ORDERS = ['big', 'little']
+BYTE_ORDER = 'big'
 
 # Sizes of integer fields of structs in bytes
 INT_SIZE_8 = 1
@@ -48,10 +47,10 @@ GAME_OFFER_RECV_BUFFER_SIZE = 1 << 4  # 16
 MAGIC_COOKIE = 0xfeedbeef
 MAGIC_COOKIE_OFFSET = 0
 MAGIC_COOKIE_SIZE = INT_SIZE_32
+
 MSG_TYPE_OFFER = 0x2
 MSG_TYPE_OFFSET = 4
-# account for padding
-MSG_TYPE_OFFER_SIZES = [INT_SIZE_8, INT_SIZE_16]
+MSG_TYPE_SIZE = 1
 
 # The duration for which the server keeps sending (broadcasting) game
 # offers to clients

@@ -86,19 +86,7 @@ def _recv_game_offer(game_offer_socket):
 
 
 def _decode_message(message_bytes):
-    for byte_order in config.INTEGER_BYTE_ORDERS:
-        port = _decode_message_byte_order(message_bytes, byte_order)
-        if port is not None:
-            break
-    return port
-
-
-def _decode_message_byte_order(message_bytes, byte_order):
-    for msg_type_size in config.MSG_TYPE_OFFER_SIZES:
-        port = _decode_message_core(message_bytes, byte_order, msg_type_size)
-        if port is not None:
-            break
-    return port
+    return _decode_message_core(message_bytes, config.BYTE_ORDER, config.MSG_TYPE_SIZE)
 
 
 def _decode_message_core(message_bytes, byte_order, msg_type_size):
